@@ -11,11 +11,12 @@
 HotPot 住在菜单栏，把每个 agent 的整棵进程树合成一行，标清楚烫了多久，然后把它挪到能效核：**任务照跑，只是不抢满所有核心**。
 
 <p align="center">
-  <img src="docs/ui/panel-v3.png" height="440" alt="菜单栏面板">&nbsp;&nbsp;&nbsp;
-  <img src="docs/ui/settings-v7.png" height="440" alt="设置窗口">
+  <img src="docs/ui/panel-v3.png" height="340" alt="菜单栏面板">&nbsp;&nbsp;
+  <img src="docs/ui/settings-v7.png" height="340" alt="设置窗口">&nbsp;&nbsp;
+  <img src="docs/ui/dashboard.png" height="340" alt="资源看板">
 </p>
 
-<p align="center"><sub>左：菜单栏面板　右：设置窗口</sub></p>
+<p align="center"><sub>菜单栏面板 · 设置窗口 · 资源看板</sub></p>
 
 ## 功能
 
