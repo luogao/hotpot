@@ -32,12 +32,20 @@ enum AppInfo {
 
 enum PanelTab { case agents, ports }
 
+private struct ListBottomKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct PanelView: View {
     @ObservedObject var model: AppModel
     /// 离屏渲染时 ScrollView 会整块空白，--render 传 false 走普通 VStack
     var scrollable: Bool = true
     @State private var tab: PanelTab
     @State private var showIdle = false
+    @State private var hasMoreBelow = false
     @State private var confirmingKill = false
 
     init(model: AppModel, scrollable: Bool = true, initialTab: PanelTab = .agents) {
@@ -164,8 +172,36 @@ struct PanelView: View {
     @ViewBuilder
     private var listBody: some View {
         if scrollable {
-            ScrollView(.vertical, showsIndicators: true) {
-                listContent
+            GeometryReader { outer in
+                ScrollView(.vertical, showsIndicators: false) {
+                    listContent
+                        .padding(.bottom, 26)   // 滚到底时最后一行不贴边
+                        .background(
+                            GeometryReader { inner in
+                                Color.clear.preference(
+                                    key: ListBottomKey.self,
+                                    value: inner.frame(in: .named("listScroll")).maxY
+                                )
+                            }
+                        )
+                }
+                .coordinateSpace(name: "listScroll")
+                .onPreferenceChange(ListBottomKey.self) { maxY in
+                    // 内容还没滚到底：底部盖一层渐变，提示下面还有
+                    let more = maxY - outer.size.height > 6
+                    if more != hasMoreBelow {
+                        withAnimation(.easeOut(duration: 0.18)) { hasMoreBelow = more }
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    if hasMoreBelow {
+                        LinearGradient(colors: [Theme.bg.opacity(0), Theme.bg.opacity(0.92), Theme.bg],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: 34)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                }
             }
             .frame(maxHeight: .infinity)
         } else {

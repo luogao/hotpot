@@ -88,6 +88,17 @@ if argv.contains("--render") {
             DevService(pid: 90003, port: 8000, command: "python", uptime: 720, stray: false),
         ]
     }
+    if argv.contains("--many"), let seed = model.sessions.first {
+        // 造一堆会话让列表溢出，用来验证底部渐隐提示
+        model.sessions = (0..<14).map { i in
+            var s = seed
+            s.cpuPercent = Double(90 - i * 6)
+            s.busyChildren = i % 3 == 0 ? [("node", Double(80 - i * 5))] : []
+            s.pids = [seed.rootPid]
+            return s
+        }
+        model.processCount = 612
+    }
     if argv.contains("--cooled"), let first = model.sessions.first {
         model.cooled = Set(first.pids)
     }
@@ -99,7 +110,23 @@ if argv.contains("--render") {
         let initialTab: PanelTab = argv.contains("--tab=ports") ? .ports : .agents
         let view = renderSettings
             ? AnyView(SettingsView(onClose: {}, scrollable: false))
-            : AnyView(PanelView(model: model, scrollable: false, initialTab: initialTab))
+            : AnyView(PanelView(model: model, scrollable: argv.contains("--snapshot"), initialTab: initialTab))
+        // ImageRenderer 渲染 ScrollView 会整块空白，滚动版走 NSHostingView 离屏快照
+        let useHost = argv.contains("--snapshot")
+        if useHost {
+            let host = NSHostingView(rootView: view)
+            host.frame = NSRect(x: 0, y: 0, width: 340, height: 580)
+            host.appearance = NSAppearance(named: .darkAqua)
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                if let png = rep.representation(using: .png, properties: [:]) {
+                    try? png.write(to: URL(fileURLWithPath: out))
+                    print("rendered -> \(out)  \(rep.pixelsWide)x\(rep.pixelsHigh)")
+                }
+            }
+            exit(0)
+        }
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         if let img = renderer.nsImage,

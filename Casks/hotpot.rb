@@ -1,6 +1,6 @@
 cask "hotpot" do
-  version "0.3.6"
-  sha256 "56b7004e3558ad4f4b231700d749b61c537427127caade91b36ff74bcdb2dbe9"
+  version "0.3.7"
+  sha256 "e1e75b4d899a2b46eed05a50b22c3d1e533d0d55d71e3b9358422f65654a8ff5"
 
   url "https://github.com/luogao/hotpot/releases/download/v#{version}/HotPot-#{version}.zip"
   name "HotPot"
