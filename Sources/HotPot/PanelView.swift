@@ -37,6 +37,7 @@ struct PanelView: View {
     /// 离屏渲染时 ScrollView 会整块空白，--render 传 false 走普通 VStack
     var scrollable: Bool = true
     @State private var tab: PanelTab
+    @State private var showIdle = false
     @State private var confirmingKill = false
 
     init(model: AppModel, scrollable: Bool = true, initialTab: PanelTab = .agents) {
@@ -181,19 +182,59 @@ struct PanelView: View {
         }
     }
 
+    /// 0% CPU 且没有任何忙的子进程 = 空闲（只是挂着没干活），默认不占列表位置
+    private func isIdle(_ s: AgentSession) -> Bool {
+        !model.isCooled(s) && s.cpuPercent < 0.3 && s.busyChildren.isEmpty
+    }
+
+    private var idleCount: Int { model.sessions.filter { isIdle($0) }.count }
+
+    private var visibleSessions: [AgentSession] {
+        showIdle ? model.sessions : model.sessions.filter { !isIdle($0) }
+    }
+
     private var sessionsSection: some View {
         VStack(spacing: 0) {
-            ForEach(Array(model.sessions.enumerated()), id: \.element.rootPid) { i, s in
+            ForEach(Array(visibleSessions.enumerated()), id: \.element.rootPid) { i, s in
                 SessionRow(session: s,
                            cooled: model.isCooled(s),
                            alert: model.alerts[s.rootPid],
                            accent: accent,
                            action: { model.toggleCool(s) })
-                if i < model.sessions.count - 1 {
+                if i < visibleSessions.count - 1 {
+                    Rectangle().fill(Theme.line).frame(height: 1)
+                }
+            }
+            if idleCount > 0 {
+                idleToggle
+            }
+        }
+    }
+
+    private var idleToggle: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.14)) { showIdle.toggle() }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: showIdle ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                Text(showIdle
+                     ? L10n.t("收起 \(idleCount) 个空闲", "Hide \(idleCount) idle")
+                     : L10n.t("还有 \(idleCount) 个空闲", "\(idleCount) idle"))
+                    .font(.system(size: 9.5))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.ink2.opacity(0.7))
+            .padding(.horizontal, 2)
+            .frame(height: 26)
+            .contentShape(Rectangle())
+            .overlay(alignment: .top) {
+                if !visibleSessions.isEmpty {
                     Rectangle().fill(Theme.line).frame(height: 1)
                 }
             }
         }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
@@ -217,11 +258,35 @@ struct PanelView: View {
         VStack(spacing: 0) {
             if model.sessions.isEmpty {
                 emptyState
+            } else if visibleSessions.isEmpty {
+                idleOnlyState
             } else {
                 sessionsSection
             }
         }
         .padding(.top, 2)
+    }
+
+    private var idleOnlyState: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("没有 agent 在干活", "Nothing is cooking"))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Theme.ink)
+            Text(L10n.t("\(idleCount) 个 agent 挂着但 CPU 是 0", "\(idleCount) agents alive, all at 0%"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(Theme.ink2)
+            Button {
+                withAnimation(.easeOut(duration: 0.14)) { showIdle = true }
+            } label: {
+                Text(L10n.t("显示它们", "Show them"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 30)
+        .padding(.horizontal, 2)
     }
 
     // MARK: 端口列表
