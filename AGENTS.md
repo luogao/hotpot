@@ -23,7 +23,7 @@ Sources/HotPot/
 └── PanelView.swift               SwiftUI 面板
 PRD.md                            需求文档（可行性 / 功能清单 / 架构 / 风险 / 里程碑）
 docs/POC-REPORT.md                实测数据与实验方法
-poc-panel.png                     离屏渲染的面板截图
+docs/ui/                          设计稿三方案 + 四种状态的渲染截图
 ```
 
 ## 构建与自检

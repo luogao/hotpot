@@ -4,7 +4,9 @@
 
 灵感来自 [WhoIsCooking](https://whoiscooking.site)，独立实现，MIT 协议。
 
-![panel](poc-panel.png)
+![panel](docs/ui/ui-state-normal.png)
+
+<p align="center"><img src="docs/ui/ui-state-danger.png" width="340" alt="91°C 危险态"></p>
 
 ## 状态
 

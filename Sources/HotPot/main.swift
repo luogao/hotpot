@@ -50,12 +50,19 @@ if argv.contains("--render") {
     // 离屏渲染面板 PNG（不需要屏幕录制权限）
     let model = AppModel()
     model.loadSync()
+    // 演示用状态注入：--fake=91 覆盖温度，--empty 清空列表，--cooled 把第一行标为已降温
+    if let f = argv.first(where: { $0.hasPrefix("--fake=") }), let v = Double(f.dropFirst(7)) {
+        model.temperature = v
+        if model.sensorName.isEmpty { model.sensorName = "PMU tdie8" }
+    }
+    if argv.contains("--empty") { model.sessions = [] }
+    if argv.contains("--cooled"), let first = model.sessions.first {
+        model.cooled = Set(first.pids)
+    }
     let out = (argv.first(where: { $0.hasPrefix("--out=") })?.dropFirst(6)).map(String.init)
         ?? "/Users/gaogao/Documents/Hermes/whoscooking-oss/poc-panel.png"
     MainActor.assumeIsolated {
         let view = PanelView(model: model)
-            .frame(width: 330)
-            .background(Color(red: 0.11, green: 0.11, blue: 0.12))
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         if let img = renderer.nsImage,
@@ -123,7 +130,7 @@ func runDump() {
     if sessions.isEmpty { print("  (无)") }
     for s in sessions {
         print(String(format: "  %@ %-13@ %6.1f%%  %d 进程  %@",
-                     s.def.emoji, s.def.name as NSString, s.cpuPercent,
+                     s.def.id as NSString, s.def.name as NSString, s.cpuPercent,
                      s.pids.count, s.summary))
         if !s.busyChildren.isEmpty {
             let kids = s.busyChildren.prefix(4).map { String(format: "%@ %.0f%%", $0.name, $0.cpu) }

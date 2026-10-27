@@ -3,7 +3,7 @@ import Foundation
 struct AgentDef {
     let id: String
     let name: String
-    let emoji: String
+    let symbol: String      // SF Symbol 名（单色线条图标，不用 emoji）
     /// 命中任一即认为是该 agent 的主进程
     let patterns: [String]
     /// 命中任一则排除（避免把 IDE 的渲染进程当成 agent 本体）
@@ -13,31 +13,31 @@ struct AgentDef {
 /// 对齐原产品支持列表，可在此扩展
 enum AgentRegistry {
     static let all: [AgentDef] = [
-        AgentDef(id: "claude", name: "Claude Code", emoji: "🟠",
+        AgentDef(id: "claude", name: "Claude Code", symbol: "asterisk",
                  patterns: ["claude", ".claude/local"],
                  excludes: ["Claude.app", "Claude Helper", "claude.ai"]),
-        AgentDef(id: "codex", name: "Codex CLI", emoji: "⚫️",
+        AgentDef(id: "codex", name: "Codex CLI", symbol: "terminal",
                  patterns: ["codex"],
                  excludes: ["Codex.app/Contents/Frameworks"]),
-        AgentDef(id: "cursor", name: "Cursor", emoji: "🔵",
+        AgentDef(id: "cursor", name: "Cursor", symbol: "cursorarrow",
                  patterns: ["cursor-agent", "Cursor Helper (Renderer)"],
                  excludes: []),
-        AgentDef(id: "gemini", name: "Gemini CLI", emoji: "🔷",
+        AgentDef(id: "gemini", name: "Gemini CLI", symbol: "sparkles",
                  patterns: ["gemini"], excludes: ["Gemini.app"]),
-        AgentDef(id: "aider", name: "Aider", emoji: "🟢",
+        AgentDef(id: "aider", name: "Aider", symbol: "chevron.left.forwardslash.chevron.right",
                  patterns: ["aider"], excludes: []),
-        AgentDef(id: "copilot", name: "Copilot CLI", emoji: "⚪️",
+        AgentDef(id: "copilot", name: "Copilot CLI", symbol: "person.crop.circle",
                  patterns: ["copilot"], excludes: []),
-        AgentDef(id: "ollama", name: "Ollama", emoji: "🦙",
+        AgentDef(id: "ollama", name: "Ollama", symbol: "circle.hexagongrid",
                  patterns: ["ollama"], excludes: []),
-        AgentDef(id: "lmstudio", name: "LM Studio", emoji: "🟣",
+        AgentDef(id: "lmstudio", name: "LM Studio", symbol: "cube",
                  patterns: ["LM Studio", "lms "], excludes: []),
-        AgentDef(id: "xcode", name: "Xcode Build", emoji: "🔨",
+        AgentDef(id: "xcode", name: "Xcode Build", symbol: "hammer",
                  patterns: ["xcodebuild", "swift-build", "swift-frontend", "clang"],
                  excludes: ["SourceKit", "clangd"]),
-        AgentDef(id: "ffmpeg", name: "ffmpeg", emoji: "🎬",
+        AgentDef(id: "ffmpeg", name: "ffmpeg", symbol: "film",
                  patterns: ["ffmpeg"], excludes: []),
-        AgentDef(id: "docker", name: "Docker", emoji: "🐳",
+        AgentDef(id: "docker", name: "Docker", symbol: "shippingbox",
                  patterns: ["com.docker", "docker"], excludes: ["Docker Desktop"]),
     ]
 
