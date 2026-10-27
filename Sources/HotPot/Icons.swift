@@ -26,7 +26,7 @@ struct AgentIcon: View {
 
     private var gradient: LinearGradient {
         LinearGradient(colors: dim
-                       ? [Theme.ink2.opacity(0.55), Theme.ink2.opacity(0.35)]
+                       ? [Theme.ink2.opacity(0.9), Theme.ink2.opacity(0.62)]
                        : [Theme.ink, Theme.ink2],
                        startPoint: .top, endPoint: .bottom)
     }

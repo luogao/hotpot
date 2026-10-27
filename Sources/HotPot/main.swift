@@ -74,9 +74,10 @@ if argv.contains("--render") {
     let renderSettings = argv.contains("--settings")
     MainActor.assumeIsolated {
         // 离屏渲染时 ScrollView 会整块空白，两张图各自关掉滚动
+        let initialTab: PanelTab = argv.contains("--tab=ports") ? .ports : .agents
         let view = renderSettings
             ? AnyView(SettingsView(onClose: {}, scrollable: false))
-            : AnyView(PanelView(model: model, scrollable: false))
+            : AnyView(PanelView(model: model, scrollable: false, initialTab: initialTab))
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         if let img = renderer.nsImage,

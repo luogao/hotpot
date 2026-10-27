@@ -30,11 +30,20 @@ enum AppInfo {
     static var appSupportDir: String { "Application Support/\(name)" }
 }
 
+enum PanelTab { case agents, ports }
+
 struct PanelView: View {
     @ObservedObject var model: AppModel
     /// 离屏渲染时 ScrollView 会整块空白，--render 传 false 走普通 VStack
     var scrollable: Bool = true
+    @State private var tab: PanelTab
     @State private var confirmingKill = false
+
+    init(model: AppModel, scrollable: Bool = true, initialTab: PanelTab = .agents) {
+        self.model = model
+        self.scrollable = scrollable
+        _tab = State(initialValue: initialTab)
+    }
 
     private var isDanger: Bool { model.temperature >= 85 }
     private var accent: Color { isDanger ? Theme.danger : Theme.accent }
@@ -43,6 +52,7 @@ struct PanelView: View {
         VStack(spacing: 0) {
             header
             readout
+            tabsBar
             listBody
             footer
         }
@@ -111,6 +121,43 @@ struct PanelView: View {
         }
     }
 
+    // MARK: 分段切换
+
+    private var tabsBar: some View {
+        HStack(spacing: 22) {
+            tabButton(.agents, label: L10n.t("Agent", "Agents"), count: model.sessions.count)
+            tabButton(.ports, label: L10n.t("端口", "Ports"), count: model.devServices.count)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 2)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.line).frame(height: 1)
+        }
+    }
+
+    private func tabButton(_ t: PanelTab, label: String, count: Int) -> some View {
+        let active = tab == t
+        return Button {
+            withAnimation(.easeOut(duration: 0.12)) { tab = t }
+        } label: {
+            HStack(spacing: 5) {
+                Text(label)
+                    .font(.system(size: 10.5, weight: active ? .semibold : .regular))
+                    .tracking(0.4)
+                    .foregroundStyle(active ? Theme.ink : Theme.ink2)
+                Text(String(count))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(active ? Theme.accent.opacity(0.9) : Theme.ink2.opacity(0.6))
+            }
+            .frame(height: 32)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(active ? Theme.accent : Color.clear).frame(height: 1.5)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: 可滚动区：agent 会话 + 端口
 
     @ViewBuilder
@@ -126,16 +173,12 @@ struct PanelView: View {
         }
     }
 
+    @ViewBuilder
     private var listContent: some View {
-        VStack(spacing: 0) {
-            if model.sessions.isEmpty && model.devServices.isEmpty {
-                emptyState
-            } else {
-                sessionsSection
-                if !model.devServices.isEmpty { portsSection }
-            }
+        switch tab {
+        case .agents: agentsList
+        case .ports:  portsList
         }
-        .padding(.top, 2)
     }
 
     private var sessionsSection: some View {
@@ -170,56 +213,91 @@ struct PanelView: View {
         .padding(.horizontal, 2)
     }
 
-    // MARK: 端口（在滚动区内，跟着列表一起滚）
-
-    private var portsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Rectangle().fill(Theme.line).frame(height: 1)
-                Text(L10n.t("监听端口", "Listening"))
-                    .font(.system(size: 9, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(Theme.ink2)
-                Rectangle().fill(Theme.line).frame(height: 1)
-            }
-            .padding(.vertical, 12)
-
-            ForEach(model.devServices) { s in
-                HStack(spacing: 8) {
-                    Text(":" + String(s.port))
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(Theme.ink3)
-                        .frame(width: 46, alignment: .leading)
-                    Text(s.command)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(Theme.ink2)
-                    Spacer(minLength: 0)
-                    if s.stray {
-                        Text(L10n.t("残留", "stray"))
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(Theme.accent)
-                    }
-                }
-                .frame(height: 26)
-            }
-
-            if model.devServices.contains(where: { $0.stray }) {
-                HStack {
-                    Spacer(minLength: 0)
-                    Button(L10n.t("关闭残留服务", "Kill stray")) { confirmingKill = true }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                }
-                .padding(.top, 4)
+    private var agentsList: some View {
+        VStack(spacing: 0) {
+            if model.sessions.isEmpty {
+                emptyState
+            } else {
+                sessionsSection
             }
         }
+        .padding(.top, 2)
+    }
+
+    // MARK: 端口列表
+
+    private var portsList: some View {
+        VStack(spacing: 0) {
+            if model.devServices.isEmpty {
+                emptyPorts
+            } else {
+                ForEach(Array(model.devServices.enumerated()), id: \.element.id) { i, s in
+                    portRow(s, first: i == 0)
+                }
+                if model.devServices.contains(where: { $0.stray }) {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button(L10n.t("关闭残留服务", "Kill stray")) { confirmingKill = true }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .padding(.top, 12)
+                    .padding(.horizontal, 2)
+                }
+            }
+        }
+        .padding(.top, 2)
         .alert(L10n.t("关闭残留的开发服务？", "Kill stray dev services?"), isPresented: $confirmingKill) {
             Button(L10n.t("关闭进程", "Kill processes"), role: .destructive) { model.killDevServices() }
             Button(L10n.t("取消", "Cancel"), role: .cancel) {}
         } message: {
             Text(model.devServices.filter(\.stray).map { ":\($0.port) \($0.command)" }.joined(separator: "、"))
         }
+    }
+
+    private func portRow(_ s: DevService, first: Bool) -> some View {
+        HStack(spacing: 10) {
+            Text(":" + String(s.port))
+                .font(.system(size: 11.5, design: .monospaced))
+                .foregroundStyle(Theme.ink3)
+                .frame(width: 52, alignment: .leading)
+            Text(s.command)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.ink2)
+            Spacer(minLength: 0)
+            Text(s.uptimeText)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(Theme.ink2.opacity(0.65))
+            if s.stray {
+                Text(L10n.t("残留", "stray"))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 30, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 2)
+        .frame(height: 30)
+        .overlay(alignment: .top) {
+            if !first {
+                Rectangle().fill(Theme.line).frame(height: 1)
+            }
+        }
+    }
+
+    private var emptyPorts: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.t("没有开发服务在占端口", "No dev servers listening"))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Theme.ink)
+            Text(L10n.t("node / vite / python 起来后会出现在这里", "They show up once node, vite or python starts"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(Theme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 36)
+        .padding(.horizontal, 2)
     }
 
     // MARK: 底部（固定）
