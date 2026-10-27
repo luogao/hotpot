@@ -71,8 +71,11 @@ if argv.contains("--render") {
     }
     let out = (argv.first(where: { $0.hasPrefix("--out=") })?.dropFirst(6)).map(String.init)
         ?? "/Users/gaogao/Documents/Hermes/whoscooking-oss/poc-panel.png"
+    let renderSettings = argv.contains("--settings")
     MainActor.assumeIsolated {
-        let view = PanelView(model: model)
+        let view = renderSettings
+            ? AnyView(SettingsView(onClose: {}, scrollable: false))
+            : AnyView(PanelView(model: model))
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         if let img = renderer.nsImage,

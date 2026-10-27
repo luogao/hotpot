@@ -180,6 +180,7 @@ struct PanelView: View {
                 .tracking(0.2)
                 .foregroundStyle(Theme.ink2)
             Spacer(minLength: 0)
+            SettingsButton()
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
@@ -234,6 +235,10 @@ struct SessionRow: View {
     let accent: Color
     let action: () -> Void
 
+    @State private var hover = false
+    @State private var btnHover = false
+    @State private var expanded = false
+
     private var alerting: Bool { alert != nil && !cooled }
 
     private var subtitle: String {
@@ -251,6 +256,23 @@ struct SessionRow: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            mainRow
+            if expanded { detail }
+        }
+        // 预警用左侧竖条标记，不用整块底色：底块会读成「卡片」，和面板的无卡片语言冲突
+        .overlay(alignment: .leading) {
+            if alerting {
+                Rectangle()
+                    .fill(Theme.danger)
+                    .frame(width: 2)
+                    .offset(x: -9)
+            }
+        }
+        .opacity(session.hasOtherUid ? 0.55 : 1)
+    }
+
+    private var mainRow: some View {
         HStack(spacing: 9) {
             Image(systemName: session.def.symbol)
                 .font(.system(size: 12, weight: .regular))
@@ -275,35 +297,108 @@ struct SessionRow: View {
                 .foregroundStyle(alerting ? Theme.danger : Theme.ink3)
                 .frame(width: 48, alignment: .trailing)
 
+            // 降温按钮：默认就给一个淡底和描边，让人看出这里能点
             Button(action: action) {
                 Image(systemName: "snowflake")
                     .font(.system(size: 11.5))
-                    .foregroundStyle(cooled ? accent : Theme.ink2.opacity(0.85))
+                    .foregroundStyle(cooled || btnHover ? accent : Theme.ink2)
                     .frame(width: 24, height: 24)
                     .background(
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(cooled ? accent.opacity(0.10) : Color.clear)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(cooled ? accent.opacity(0.14)
+                                  : (btnHover ? accent.opacity(0.12) : Color.white.opacity(0.05)))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(cooled ? accent.opacity(0.45) : Color.white.opacity(0.10), lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
             .disabled(session.hasOtherUid)
-            .help(session.hasOtherUid ? L10n.t("root 进程无法降温", "root process cannot be cooled") : (cooled ? L10n.t("恢复全速", "Restore full speed") : L10n.t("降到能效核，不中断任务", "Move to efficiency cores, keep running")))
+            .onHover { btnHover = $0 }
+            .help(session.hasOtherUid
+                  ? L10n.t("root 进程无法降温", "root process cannot be cooled")
+                  : (cooled ? L10n.t("恢复全速", "Restore full speed")
+                            : L10n.t("降到能效核，不中断任务", "Move to efficiency cores, keep running")))
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(Theme.ink2.opacity(hover || expanded ? 0.9 : 0.35))
+                .rotationEffect(.degrees(expanded ? 90 : 0))
+                .frame(width: 8)
+                .animation(.easeOut(duration: 0.15), value: expanded)
         }
-        .frame(height: 56)
-        // 预警用左侧竖条标记，不用整块底色：底块会读成「卡片」，和面板的无卡片语言冲突
-        .overlay(alignment: .leading) {
-            if alerting {
-                Rectangle()
-                    .fill(Theme.danger)
-                    .frame(width: 2)
-                    .offset(x: -9)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 6)
+        .contentShape(Rectangle())
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill(hover ? Color.white.opacity(0.035) : Color.clear)
+                .padding(.horizontal, -6)
+        )
+        .onHover { hover = $0 }
+        .onTapGesture {
+            withAnimation(.easeOut(duration: 0.16)) { expanded.toggle() }
+        }
+    }
+
+    // MARK: 展开明细
+
+    private var detail: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            if session.busyChildren.isEmpty {
+                Text(L10n.t("没有活跃的子进程", "no active subprocesses"))
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.ink2.opacity(0.8))
+            } else {
+                ForEach(Array(session.busyChildren.prefix(6).enumerated()), id: \.offset) { _, kid in
+                    HStack(spacing: 8) {
+                        Text(kid.name)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(Theme.ink3)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text(String(format: "%.0f%%", kid.cpu))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(Theme.ink2)
+                    }
+                }
             }
+            Divider().overlay(Theme.line).padding(.vertical, 1)
+            Text(L10n.t("根 PID \(session.rootPid) · 共 \(session.pids.count) 个进程",
+                        "root pid \(session.rootPid) · \(session.pids.count) processes"))
+                .font(.system(size: 9.5, design: .monospaced))
+                .foregroundStyle(Theme.ink2.opacity(0.75))
         }
-        .opacity(session.hasOtherUid ? 0.55 : 1)
+        .padding(.leading, 30)
+        .padding(.trailing, 8)
+        .padding(.bottom, 11)
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 }
 
 // MARK: - 描边按钮
+
+/// 面板里的设置入口。面板本身拿不到 AppDelegate，用通知让上层开窗口。
+struct SettingsButton: View {
+    @State private var hover = false
+    var body: some View {
+        Button {
+            NotificationCenter.default.post(name: .hotPotOpenSettings, object: nil)
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 10.5))
+                .foregroundStyle(hover ? Theme.ink : Theme.ink2.opacity(0.8))
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .help(L10n.t("设置", "Settings"))
+    }
+}
+
+extension Notification.Name {
+    static let hotPotOpenSettings = Notification.Name("hotpot.openSettings")
+}
 
 struct OutlineButton: View {
     let title: String

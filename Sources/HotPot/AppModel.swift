@@ -149,6 +149,17 @@ enum HeatLevel {
         case .critical: return L10n.t("过热降频", "Throttling")
         }
     }
+    /// 菜单栏用的指示点颜色：系统色自带明暗两套，能同时活在浅色和深色菜单栏上。
+    /// 面板内的 color 仍是设计稿的深色版（深底上更协调）。
+    var menuColor: NSColor {
+        switch self {
+        case .cool: return .systemGreen
+        case .warm: return .systemYellow
+        case .hot: return .systemOrange
+        case .critical: return .systemRed
+        }
+    }
+
     var color: NSColor {
         switch self {
         case .cool: return NSColor(red: 0.15, green: 0.55, blue: 0.45, alpha: 1)

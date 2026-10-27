@@ -9,6 +9,8 @@ struct AgentRule: Codable {
     var symbol: String?
     var patterns: [String]
     var excludes: [String]?
+    /// 设置页里的开关。旧文件没有这个字段时按启用处理。
+    var enabled: Bool?
 }
 
 struct AlertRule: Codable {
@@ -31,7 +33,8 @@ struct Rules: Codable {
         return base.appendingPathComponent("HotPot/rules.json")
     }()
 
-    static let shared: Rules = load()
+    /// 设置页保存后要在进程内立即可读，所以是 var
+    static var shared: Rules = load()
 
     // MARK: - 默认值
 
@@ -40,28 +43,28 @@ struct Rules: Codable {
         agents: [
             AgentRule(id: "claude", name: "Claude Code", symbol: "asterisk",
                       patterns: ["claude", ".claude/local"],
-                      excludes: ["Claude.app", "Claude Helper", "claude.ai"]),
+                      excludes: ["Claude.app", "Claude Helper", "claude.ai"], enabled: true),
             AgentRule(id: "codex", name: "Codex CLI", symbol: "terminal",
-                      patterns: ["codex"], excludes: ["Codex.app/Contents/Frameworks"]),
+                      patterns: ["codex"], excludes: ["Codex.app/Contents/Frameworks"], enabled: true),
             AgentRule(id: "cursor", name: "Cursor", symbol: "cursorarrow",
-                      patterns: ["cursor-agent", "Cursor Helper (Renderer)"], excludes: []),
+                      patterns: ["cursor-agent", "Cursor Helper (Renderer)"], excludes: [], enabled: true),
             AgentRule(id: "gemini", name: "Gemini CLI", symbol: "sparkles",
-                      patterns: ["gemini"], excludes: ["Gemini.app"]),
+                      patterns: ["gemini"], excludes: ["Gemini.app"], enabled: true),
             AgentRule(id: "aider", name: "Aider", symbol: "chevron.left.forwardslash.chevron.right",
-                      patterns: ["aider"], excludes: []),
+                      patterns: ["aider"], excludes: [], enabled: true),
             AgentRule(id: "copilot", name: "Copilot CLI", symbol: "person.crop.circle",
-                      patterns: ["copilot"], excludes: []),
+                      patterns: ["copilot"], excludes: [], enabled: true),
             AgentRule(id: "ollama", name: "Ollama", symbol: "circle.hexagongrid",
-                      patterns: ["ollama"], excludes: []),
+                      patterns: ["ollama"], excludes: [], enabled: true),
             AgentRule(id: "lmstudio", name: "LM Studio", symbol: "cube",
-                      patterns: ["LM Studio", "lms "], excludes: []),
+                      patterns: ["LM Studio", "lms "], excludes: [], enabled: true),
             AgentRule(id: "xcode", name: "Xcode Build", symbol: "hammer",
                       patterns: ["xcodebuild", "swift-build", "swift-frontend", "clang"],
-                      excludes: ["SourceKit", "clangd"]),
+                      excludes: ["SourceKit", "clangd"], enabled: true),
             AgentRule(id: "ffmpeg", name: "ffmpeg", symbol: "film",
-                      patterns: ["ffmpeg"], excludes: []),
+                      patterns: ["ffmpeg"], excludes: [], enabled: true),
             AgentRule(id: "docker", name: "Docker", symbol: "shippingbox",
-                      patterns: ["com.docker", "docker"], excludes: ["Docker Desktop"]),
+                      patterns: ["com.docker", "docker"], excludes: ["Docker Desktop"], enabled: true),
         ],
         devServerCommands: [
             "node", "python", "ruby", "php", "deno", "bun", "java",

@@ -13,7 +13,9 @@ struct AgentDef {
 /// 规则表来自 `~/Library/Application Support/HotPot/rules.json`，
 /// 文件缺失或解析失败时回退 Rules.default（内置 11 项）。
 enum AgentRegistry {
-    static let all: [AgentDef] = Rules.shared.agents.map { rule in
+    static let all: [AgentDef] = Rules.shared.agents
+        .filter { $0.enabled != false }
+        .map { rule in
         AgentDef(id: rule.id,
                  name: rule.name,
                  symbol: rule.symbol ?? "circle.dashed",

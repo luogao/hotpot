@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private let model = AppModel()
+    private let settings = SettingsWindowController()
     private var titleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -26,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.delegate = self
         popover.animates = false
+
+        NotificationCenter.default.addObserver(forName: .hotPotOpenSettings, object: nil, queue: .main) { [weak self] _ in
+            self?.openSettings()
+        }
 
         titleTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             self?.refreshTitle()
@@ -49,9 +54,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 菜单栏重绘不便宜：只有读数变了才写 attributedTitle
         guard text != lastTitle else { return }
         lastTitle = text
+        // 菜单栏是毛玻璃/深浅壁纸叠加，彩色文字会糊掉。文字一律用 labelColor
+        // （系统自动反色），档位信息交给前面的小圆点。
+        btn.image = t > 0 ? Self.dot(color: model.level.menuColor) : nil
+        btn.imagePosition = .imageLeading
+        btn.imageScaling = .scaleNone
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
-            .foregroundColor: t > 0 ? model.level.color : NSColor.secondaryLabelColor,
+            .foregroundColor: model.temperature >= 85 ? NSColor.systemRed : NSColor.labelColor,
         ]
         btn.attributedTitle = NSAttributedString(string: text, attributes: attrs)
         btn.toolTip = L10n.t("HotPot · 芯片 \(Int(t))℃ · \(model.sessions.count) 个 agent 在跑",
@@ -83,7 +93,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         login.state = isLaunchAtLogin ? .on : .off
         menu.addItem(login)
 
-        menu.addItem(withTitle: L10n.t("编辑规则…", "Edit rules…"),
+        menu.addItem(withTitle: L10n.t("偏好设置…", "Settings…"),
+                     action: #selector(openSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: L10n.t("编辑规则文件…", "Edit rules file…"),
                      action: #selector(openRules), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: L10n.t("退出 HotPot", "Quit HotPot"),
@@ -94,7 +106,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                    in: btn)
     }
 
+    /// 5pt 实心圆，不随菜单栏反色（颜色本身是语义）
+    private static func dot(color: NSColor) -> NSImage {
+        let d: CGFloat = 6
+        let img = NSImage(size: NSSize(width: d, height: d), flipped: false) { rect in
+            color.setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5)).fill()
+            return true
+        }
+        img.isTemplate = false
+        return img
+    }
+
     @objc private func quit() { NSApp.terminate(nil) }
+
+    @objc private func openSettings() {
+        if popover.isShown { popover.performClose(nil) }
+        settings.show()
+    }
 
     @objc private func openRules() {
         NSWorkspace.shared.open(Rules.path)
@@ -128,10 +157,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let btn = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            return
         }
+        // NSPopover 先按当前 contentSize 定位，SwiftUI 在 show 之后才完成布局。
+        // 内容比预估高时窗口会向上生长，直接盖住菜单栏。先把布局跑完、尺寸定死。
+        if let vc = popover.contentViewController {
+            vc.view.layoutSubtreeIfNeeded()
+            let fit = vc.view.fittingSize
+            if fit.height > 0, fit.width > 0 { popover.contentSize = fit }
+        }
+        popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 }
 
