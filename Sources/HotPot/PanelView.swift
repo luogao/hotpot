@@ -32,20 +32,12 @@ enum AppInfo {
 
 enum PanelTab { case agents, ports }
 
-private struct ListBottomKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
 struct PanelView: View {
     @ObservedObject var model: AppModel
     /// 离屏渲染时 ScrollView 会整块空白，--render 传 false 走普通 VStack
     var scrollable: Bool = true
     @State private var tab: PanelTab
     @State private var showIdle = false
-    @State private var hasMoreBelow = false
     @State private var expandedPort: String?
     @State private var confirmingKill = false
 
@@ -175,45 +167,9 @@ struct PanelView: View {
     @ViewBuilder
     private var listBody: some View {
         if scrollable {
-            GeometryReader { outer in
-                ScrollView(.vertical, showsIndicators: false) {
-                    listContent
-                        .padding(.bottom, 26)   // 滚到底时最后一行不贴边
-                        .background(
-                            GeometryReader { inner in
-                                Color.clear.preference(
-                                    key: ListBottomKey.self,
-                                    value: inner.frame(in: .named("listScroll")).maxY
-                                )
-                            }
-                        )
-                }
-                .coordinateSpace(name: "listScroll")
-                .onPreferenceChange(ListBottomKey.self) { maxY in
-                    // 内容还没滚到底：底部盖一层渐变，提示下面还有
-                    let more = maxY - outer.size.height > 6
-                    if more != hasMoreBelow {
-                        withAnimation(.easeOut(duration: 0.18)) { hasMoreBelow = more }
-                    }
-                }
-                .overlay(alignment: .bottom) {
-                    if hasMoreBelow {
-                        // 半透明 veil：内容被压暗但仍看得出轮廓，比直接擦成底色更像「下面还有」
-                        VStack(spacing: 0) {
-                            LinearGradient(colors: [Theme.bg.opacity(0), Theme.bg.opacity(0.88)],
-                                           startPoint: .top, endPoint: .bottom)
-                                .frame(height: 22)
-                            Rectangle()
-                                .fill(Theme.bg.opacity(0.88))
-                                .frame(height: 14)
-                        }
-                        .frame(height: 36)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                    }
-                }
+            ScrollFade(space: "panelScroll", tint: Theme.bg) {
+                listContent
             }
-            .frame(maxHeight: .infinity)
         } else {
             listContent
                 .frame(maxHeight: .infinity, alignment: .top)

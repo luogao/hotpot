@@ -12,6 +12,7 @@ struct SettingsView: View {
 
     private let onClose: () -> Void
     private let scrollable: Bool
+    @State private var showUninstalled = false
 
     init(onClose: @escaping () -> Void, scrollable: Bool = true) {
         _rules = State(initialValue: Rules.shared)
@@ -104,11 +105,10 @@ struct SettingsView: View {
     @ViewBuilder
     private func mainScroll(_ proxy: ScrollViewProxy) -> some View {
         if scrollable {
-            ScrollView(.vertical, showsIndicators: true) {
+            ScrollFade(space: "settingsScroll", tint: Theme.bg, bottomInset: 24) {
                 sections
-                    .padding(EdgeInsets(top: 20, leading: 24, bottom: 24, trailing: 24))
+                    .padding(EdgeInsets(top: 20, leading: 24, bottom: 0, trailing: 24))
             }
-            .frame(maxHeight: .infinity)
         } else {
             sections
                 .padding(EdgeInsets(top: 20, leading: 24, bottom: 24, trailing: 24))
@@ -192,50 +192,93 @@ struct SettingsView: View {
 
     // MARK: - 03 Agent
 
+    /// 已安装的排在前面；未安装的默认折叠，别占着列表位
+    private var visibleAgentIndices: [(idx: Int, installed: Bool)] {
+        rules.agents.enumerated()
+            .map { (idx: $0.offset, installed: isInstalled($0.element)) }
+            .filter { showUninstalled || $0.installed }
+            .sorted { a, b in
+                if a.installed != b.installed { return a.installed && !b.installed }
+                return a.idx < b.idx
+            }
+    }
+
+    private var uninstalledCount: Int {
+        rules.agents.filter { !isInstalled($0) }.count
+    }
+
     private var agentsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHead(n: "03", title: L10n.t("识别的 Agent", "Detected agents"),
                         trailing: L10n.t("\(installedCount) 已安装", "\(installedCount) installed"))
-            ForEach(Array($rules.agents.enumerated()), id: \.offset) { idx, $agent in
-                let installed = isInstalled(agent)
-                HStack(spacing: 12) {
-                    HStack(spacing: 9) {
-                        AgentIcon(id: agent.id, symbol: agent.symbol ?? "circle.dashed", size: 15,
-                                  dim: !(agent.enabled ?? true))
-                        Text(agent.name)
-                            .font(.system(size: 12.5))
-                            .foregroundStyle((agent.enabled ?? true) ? Theme.ink : Theme.ink2.opacity(0.8))
-                            .lineLimit(1)
-                        if !installed {
-                            Text(L10n.t("未安装", "not installed"))
-                                .font(.system(size: 9.5))
-                                .foregroundStyle(Theme.ink2.opacity(0.45))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .stroke(Theme.ink2.opacity(0.2), lineWidth: 1)
-                                )
-                        }
+            ForEach(Array(visibleAgentIndices.enumerated()), id: \.element.idx) { pos, item in
+                agentRow(idx: item.idx, agent: $rules.agents[item.idx],
+                         installed: item.installed, first: pos == 0)
+            }
+            if uninstalledCount > 0 {
+                Button {
+                    withAnimation(.easeOut(duration: 0.14)) { showUninstalled.toggle() }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: showUninstalled ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 8, weight: .semibold))
+                        Text(showUninstalled
+                             ? L10n.t("收起 \(uninstalledCount) 个未安装", "Hide \(uninstalledCount) not installed")
+                             : L10n.t("还有 \(uninstalledCount) 个未安装", "\(uninstalledCount) not installed"))
+                            .font(.system(size: 10.5))
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
-                    Text((agent.enabled ?? true) ? "ON" : "OFF")
-                        .font(.system(size: 10, design: .monospaced))
-                        .tracking(0.5)
-                        .foregroundStyle((agent.enabled ?? true) ? Theme.ink3 : Theme.ink2)
-                        .frame(width: 44, alignment: .trailing)
-                    PillToggle(on: Binding(
-                        get: { agent.enabled ?? true },
-                        set: { agent.enabled = $0; dirty = true }
-                    ))
-                }
-                .frame(height: 34)
-                .opacity(installed ? 1 : 0.72)
-                .overlay(alignment: .top) {
-                    if idx > 0 {
+                    .foregroundStyle(Theme.ink2.opacity(0.6))
+                    .frame(height: 34)
+                    .contentShape(Rectangle())
+                    .overlay(alignment: .top) {
                         Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
                     }
                 }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func agentRow(idx: Int, agent: Binding<AgentRule>,
+                          installed: Bool, first: Bool) -> some View {
+        let rule = agent.wrappedValue
+        return HStack(spacing: 12) {
+            HStack(spacing: 9) {
+                AgentIcon(id: rule.id, symbol: rule.symbol ?? "circle.dashed", size: 15,
+                          dim: !(rule.enabled ?? true))
+                Text(rule.name)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle((rule.enabled ?? true) ? Theme.ink : Theme.ink2.opacity(0.8))
+                    .lineLimit(1)
+                if !installed {
+                    Text(L10n.t("未安装", "not installed"))
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(Theme.ink2.opacity(0.45))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(Theme.ink2.opacity(0.2), lineWidth: 1)
+                        )
+                }
+            }
+            Spacer(minLength: 0)
+            Text((rule.enabled ?? true) ? "ON" : "OFF")
+                .font(.system(size: 10, design: .monospaced))
+                .tracking(0.5)
+                .foregroundStyle((rule.enabled ?? true) ? Theme.ink3 : Theme.ink2)
+                .frame(width: 44, alignment: .trailing)
+            PillToggle(on: Binding(
+                get: { agent.wrappedValue.enabled ?? true },
+                set: { agent.wrappedValue.enabled = $0; dirty = true }
+            ))
+        }
+        .frame(height: 34)
+        .opacity(installed ? 1 : 0.72)
+        .overlay(alignment: .top) {
+            if !first {
+                Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
             }
         }
     }

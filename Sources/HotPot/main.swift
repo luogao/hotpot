@@ -126,7 +126,8 @@ if argv.contains("--render") {
         let useHost = argv.contains("--snapshot")
         if useHost {
             let host = NSHostingView(rootView: view)
-            host.frame = NSRect(x: 0, y: 0, width: 340, height: 580)
+            let win = renderSettings ? NSSize(width: 640, height: 760) : NSSize(width: 340, height: 580)
+            host.frame = NSRect(origin: .zero, size: win)
             host.appearance = NSAppearance(named: .darkAqua)
             host.layoutSubtreeIfNeeded()
             let scale: CGFloat = 2
