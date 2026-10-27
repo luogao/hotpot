@@ -66,7 +66,7 @@ if let glow = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
 }
 
 // 270° 刻度环：20 段，前 13 段点亮 —— 和面板里的温度刻度是同一套语言
-let track = NSColor(calibratedRed: 0.204, green: 0.204, blue: 0.224, alpha: 1)
+let track = NSColor(calibratedRed: 0.176, green: 0.176, blue: 0.196, alpha: 1)
 let startAngle: CGFloat = 135 * .pi / 180
 let sweep: CGFloat = 270 * .pi / 180
 if simple {
@@ -74,7 +74,7 @@ if simple {
     ctx.setLineWidth(64)
     ctx.setLineCap(.round)
     ctx.setStrokeColor(accent.cgColor)
-    ctx.addArc(center: center, radius: 292, startAngle: startAngle, endAngle: startAngle + sweep, clockwise: false)
+    ctx.addArc(center: center, radius: 258, startAngle: startAngle, endAngle: startAngle + sweep, clockwise: false)
     ctx.strokePath()
     ctx.setFillColor(accent.cgColor)
     ctx.fillEllipse(in: CGRect(x: center.x - 74, y: center.y - 74, width: 148, height: 148))
@@ -84,6 +84,8 @@ let lit = 16
 let gap: CGFloat = 1.9 * .pi / 180
 ctx.setLineWidth(17)
 ctx.setLineCap(.round)
+// 外发光：刻度在暗底上「亮着」，比纯色描边更有仪器背光感
+ctx.setShadow(offset: .zero, blur: 20, color: accent.withAlphaComponent(0.36).cgColor)
 for i in 0..<segments {
     let a0 = startAngle + sweep * CGFloat(i) / CGFloat(segments) + gap
     let a1 = startAngle + sweep * CGFloat(i + 1) / CGFloat(segments) - gap
@@ -94,15 +96,21 @@ for i in 0..<segments {
     } else {
         ctx.setStrokeColor(track.cgColor)
     }
-    ctx.addArc(center: center, radius: 284, startAngle: a0, endAngle: a1, clockwise: false)
+    ctx.addArc(center: center, radius: 258, startAngle: a0, endAngle: a1, clockwise: false)
     ctx.strokePath()
 }
+ctx.setShadow(offset: .zero, blur: 0, color: nil)
 
-// 核心：柔光托底 + 克制的实心点，避免读成靶心
-ctx.setFillColor(accent.withAlphaComponent(0.13).cgColor)
-ctx.fillEllipse(in: CGRect(x: center.x - 92, y: center.y - 92, width: 184, height: 184))
+// 中心：同心三层，读作「辐射源」，不是钟表轴也不是靶心
+ctx.setStrokeColor(accent.withAlphaComponent(0.42).cgColor)
+ctx.setLineWidth(5)
+ctx.addEllipse(in: CGRect(x: center.x - 58, y: center.y - 58, width: 116, height: 116))
+ctx.strokePath()
+
+ctx.setShadow(offset: .zero, blur: 34, color: accent.withAlphaComponent(0.55).cgColor)
 ctx.setFillColor(accent.cgColor)
-ctx.fillEllipse(in: CGRect(x: center.x - 46, y: center.y - 46, width: 92, height: 92))
+ctx.fillEllipse(in: CGRect(x: center.x - 40, y: center.y - 40, width: 80, height: 80))
+ctx.setShadow(offset: .zero, blur: 0, color: nil)
 }
 
 ctx.restoreGState()
