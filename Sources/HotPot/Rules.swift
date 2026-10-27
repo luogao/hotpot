@@ -34,7 +34,7 @@ struct Rules: Codable {
     static let path: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent("HotPot/rules.json")
+        return base.appendingPathComponent(AppInfo.appSupportDir + "/rules.json")
     }()
 
     /// 设置页保存后要在进程内立即可读，所以是 var
@@ -43,7 +43,7 @@ struct Rules: Codable {
     // MARK: - 默认值
 
     static let `default` = Rules(
-        version: 1,
+        version: 2,
         agents: [
             AgentRule(id: "claude", name: "Claude Code", symbol: "asterisk",
                       patterns: ["claude", ".claude/local"],
@@ -54,7 +54,7 @@ struct Rules: Codable {
                       patterns: ["cursor-agent", "Cursor Helper (Renderer)"], excludes: [], enabled: true, detect: ["/Applications/Cursor.app", "~/.cursor"]),
             AgentRule(id: "gemini", name: "Gemini CLI", symbol: "sparkles",
                       patterns: ["gemini"], excludes: ["Gemini.app"], enabled: true, detect: ["~/.gemini", "/opt/homebrew/bin/gemini", "/usr/local/bin/gemini"]),
-            AgentRule(id: "aider", name: "Aider", symbol: "chevron.left.forwardslash.chevron.right",
+            AgentRule(id: "aider", name: "Aider", symbol: "curlybraces",
                       patterns: ["aider"], excludes: [], enabled: true, detect: ["~/.aider.conf.yml", "/opt/homebrew/bin/aider", "/usr/local/bin/aider"]),
             AgentRule(id: "copilot", name: "Copilot CLI", symbol: "person.crop.circle",
                       patterns: ["copilot"], excludes: [], enabled: true, detect: ["~/.copilot", "/opt/homebrew/bin/copilot", "/usr/local/bin/copilot"]),
@@ -98,6 +98,7 @@ struct Rules: Codable {
         do {
             var loaded = try JSONDecoder().decode(Rules.self, from: data)
             loaded.mergeNewAgents()
+            loaded.migrateIfNeeded()
             return loaded
         } catch {
             // 用户改坏了：保留坏文件备份，回退默认，不覆盖他的编辑
@@ -110,6 +111,19 @@ struct Rules: Codable {
 
     /// 内置规则表新增了 agent（比如 Pi）时，老用户的 rules.json 里没有它。
     /// 按 id 补进去，用户自己的条目和开关状态一律不动。
+    /// 内置图标 / 字段升级：version 2 起统一用新的 symbol 名（Aider 的 `</>` 太宽）。
+    /// 只覆盖 symbol，用户的 patterns / excludes / enabled 一律不动。
+    mutating func migrateIfNeeded() {
+        guard version < 2 else { return }
+        let defaults = Dictionary(uniqueKeysWithValues: Rules.default.agents.map { ($0.id, $0) })
+        for i in agents.indices {
+            if let d = defaults[agents[i].id], let sym = d.symbol {
+                agents[i].symbol = sym
+            }
+        }
+        version = 2
+    }
+
     mutating func mergeNewAgents() {
         let known = Set(agents.map(\.id))
         for d in Rules.default.agents where !known.contains(d.id) {

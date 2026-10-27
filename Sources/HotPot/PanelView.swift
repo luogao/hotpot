@@ -16,13 +16,18 @@ enum Theme {
     static let border = Color.white.opacity(0.07)
 }
 
+/// 项目名的唯一来源：改名只改 `name`，窗口标题 / 菜单 / 提示 / 版权 / 链接全部跟着变。
 enum AppInfo {
+    static let name = "HotPot"
+    static let owner = "luogao"
+
     static var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
     }
-    static let repo = URL(string: "https://github.com/luogao/hotpot")!
-    static let releases = URL(string: "https://github.com/luogao/hotpot/releases")!
-    static let copyright = "© 2026 luogao"
+    static var repo: URL { URL(string: "https://github.com/\(owner)/\(name.lowercased())")! }
+    static var releases: URL { repo.appendingPathComponent("releases") }
+    static var copyright: String { "© 2026 \(name)" }
+    static var appSupportDir: String { "Application Support/\(name)" }
 }
 
 struct PanelView: View {
@@ -240,7 +245,7 @@ struct PanelView: View {
                         .foregroundStyle(Theme.ink2.opacity(0.8))
                 }
                 .buttonStyle(.plain)
-                .help(L10n.t("退出 HotPot", "Quit HotPot"))
+                .help(L10n.t("退出 \(AppInfo.name)", "Quit \(AppInfo.name)"))
             }
             .padding(.top, 6)
 
@@ -352,10 +357,8 @@ struct SessionRow: View {
 
     private var mainRow: some View {
         HStack(spacing: 9) {
-            Image(systemName: session.def.symbol)
-                .font(.system(size: 12, weight: .regular))
-                .foregroundStyle(Theme.ink2)
-                .frame(width: 15)
+            AgentIcon(id: session.def.id, symbol: session.def.symbol, size: 15,
+                      dim: !cooled && session.cpuPercent < 1)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(session.def.name)

@@ -64,8 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .foregroundColor: model.temperature >= 85 ? NSColor.systemRed : NSColor.labelColor,
         ]
         btn.attributedTitle = NSAttributedString(string: text, attributes: attrs)
-        btn.toolTip = L10n.t("HotPot · 芯片 \(Int(t))℃ · \(model.sessions.count) 个 agent 在跑",
-                            "HotPot · Chip \(Int(t))℃ · \(model.sessions.count) agents")
+        btn.toolTip = L10n.t("\(AppInfo.name) · 芯片 \(Int(t))℃ · \(model.sessions.count) 个 agent 在跑",
+                            "\(AppInfo.name) · Chip \(Int(t))℃ · \(model.sessions.count) agents")
     }
 
     // MARK: - 点击与菜单
@@ -98,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: L10n.t("编辑规则文件…", "Edit rules file…"),
                      action: #selector(openRules), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: L10n.t("退出 HotPot", "Quit HotPot"),
+        menu.addItem(withTitle: L10n.t("退出 \(AppInfo.name)", "Quit \(AppInfo.name)"),
                      action: #selector(quit), keyEquivalent: "q").target = self
 
         menu.popUp(positioning: nil,
@@ -146,7 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let alert = NSAlert()
             alert.messageText = L10n.t("设置开机自启失败", "Could not change login item")
             alert.informativeText = L10n.t(
-                "把 HotPot 拖进 /Applications 再试。\n\(error.localizedDescription)",
+                "把 \(AppInfo.name) 拖进 /Applications 再试。\n\(error.localizedDescription)",
                 "Move HotPot into /Applications and try again.\n\(error.localizedDescription)")
             alert.alertStyle = .warning
             alert.runModal()

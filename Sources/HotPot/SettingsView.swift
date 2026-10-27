@@ -200,10 +200,8 @@ struct SettingsView: View {
                 let installed = isInstalled(agent)
                 HStack(spacing: 12) {
                     HStack(spacing: 9) {
-                        Image(systemName: agent.symbol ?? "circle.dashed")
-                            .font(.system(size: 12.5))
-                            .foregroundStyle((agent.enabled ?? true) ? Theme.ink3 : Theme.ink2)
-                            .frame(width: 16)
+                        AgentIcon(id: agent.id, symbol: agent.symbol ?? "circle.dashed", size: 15,
+                                  dim: !(agent.enabled ?? true))
                         Text(agent.name)
                             .font(.system(size: 12.5))
                             .foregroundStyle((agent.enabled ?? true) ? Theme.ink : Theme.ink2.opacity(0.8))
@@ -292,7 +290,7 @@ struct SettingsView: View {
             let alert = NSAlert()
             alert.messageText = L10n.t("设置开机自启失败", "Could not change login item")
             alert.informativeText = L10n.t(
-                "把 HotPot 拖进 /Applications 再试。\n\(error.localizedDescription)",
+                "把 \(AppInfo.name) 拖进 /Applications 再试。\n\(error.localizedDescription)",
                 "Move HotPot into /Applications and try again.\n\(error.localizedDescription)")
             alert.alertStyle = .warning
             alert.runModal()
@@ -512,7 +510,7 @@ final class SettingsWindowController {
             self?.window?.close()
         }))
         let w = NSWindow(contentViewController: hosting)
-        w.title = L10n.t("HotPot 设置", "HotPot Settings")
+        w.title = L10n.t("\(AppInfo.name) 设置", "\(AppInfo.name) Settings")
         w.styleMask = [.titled, .closable, .fullSizeContentView]
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden

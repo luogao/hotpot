@@ -18,6 +18,10 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 if [ -f Resources/AppIcon.icns ]; then
   cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 fi
+# 品牌图标（lobehub/icons 预渲染的 PNG）
+if [ -d Resources/Icons ]; then
+  cp -R Resources/Icons "$APP/Contents/Resources/Icons"
+fi
 
 codesign --force --sign - --timestamp=none "$APP" >/dev/null 2>&1 || true
 
