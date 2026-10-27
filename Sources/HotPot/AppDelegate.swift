@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover.contentViewController = NSHostingController(rootView: PanelView(model: model))
         popover.behavior = .transient
+        popover.delegate = self
         popover.animates = false
 
         titleTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -36,10 +37,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var lastTitle = ""
+
     private func refreshTitle() {
         guard let btn = statusItem.button else { return }
         let t = model.temperature
         let text = t > 0 ? "\(Int(t.rounded()))°" : "—°"
+        // 菜单栏重绘不便宜：只有读数变了才写 attributedTitle
+        guard text != lastTitle else { return }
+        lastTitle = text
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
             .foregroundColor: t > 0 ? model.level.color : NSColor.secondaryLabelColor,
@@ -57,4 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.contentViewController?.view.window?.makeKey()
         }
     }
+}
+
+extension AppDelegate: NSPopoverDelegate {
+    func popoverDidShow(_ notification: Notification) { model.panelOpen = true }
+    func popoverDidClose(_ notification: Notification) { model.panelOpen = false }
 }

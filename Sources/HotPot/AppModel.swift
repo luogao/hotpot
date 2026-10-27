@@ -9,6 +9,8 @@ final class AppModel: ObservableObject {
     @Published var cooled: Set<pid_t> = []
     @Published var processCount: Int = 0
     @Published var lastError: String?
+    /// 面板是否展开：关着的时候只需要刷新菜单栏温度，不用每 2 秒扫全表
+    var panelOpen = false
 
     private let scanner = ProcessScanner()
     private let temp = TemperatureReader()
@@ -38,18 +40,25 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private var tickCount = 0
+
     private func tick() {
+        tickCount += 1
+        // 温度 ~25ms，扫描 ~13ms：温度每 3 拍（6 秒）一次；面板关着时 10 秒才扫一次
+        let needTemp = (tickCount % 3 == 1)
+        let needScan = panelOpen || (tickCount % 5 == 1)
+        guard needTemp || needScan else { return }
         queue.async { [weak self] in
             guard let self else { return }
-            let procs = self.scanner.scan()
-            let sessions = SessionAggregator.build(from: procs)
-            let hot = self.temp?.hottestSilicon() ?? self.temp?.hottestAny()
+            let procs = needScan ? self.scanner.scan() : []
+            let sessions = needScan ? SessionAggregator.build(from: procs) : self.sessions
+            let hot = needTemp ? (self.temp?.hottestSilicon() ?? self.temp?.hottestAny()) : nil
             DispatchQueue.main.async {
                 if let hot {
                     self.temperature = hot.celsius
                     self.sensorName = hot.name
                 }
-                self.processCount = procs.count
+                if needScan { self.processCount = procs.count }
                 self.sessions = sessions
                 // 清掉已退出进程的降温标记
                 let alive = Set(procs.map(\.pid))

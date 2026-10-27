@@ -78,6 +78,23 @@ if argv.contains("--render") {
     exit(0)
 }
 
+if argv.contains("--bench") {
+    let s = ProcessScanner()
+    for i in 0..<4 {
+        let t0 = Date()
+        let p = s.scan()
+        print(String(format: "scan %d: %6.1f ms  %d procs", i, Date().timeIntervalSince(t0) * 1000, p.count))
+    }
+    if let t = TemperatureReader() {
+        for i in 0..<6 {
+            let t0 = Date()
+            let r = t.readAll()
+            print(String(format: "temp %d: %6.1f ms  %d sensors", i, Date().timeIntervalSince(t0) * 1000, r.count))
+        }
+    }
+    exit(0)
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

@@ -16,11 +16,32 @@ POC 已跑通：温度读取 / agent 归因 / 一键降温 / 菜单栏面板。
 - 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
 - 给协作者/AI agent 的说明：AGENTS.md
 
-## 构建
+## 安装（自己用）
+
+```bash
+git clone https://github.com/luogao/hotpot.git
+cd hotpot
+./scripts/bundle.sh          # 编译 + 打包 + ad-hoc 签名
+cp -R build/HotPot.app /Applications/
+open /Applications/HotPot.app
+```
+
+启动后菜单栏出现 `52°`，点一下展开面板。没有 Dock 图标（`LSUIElement`）。
+
+首次打开若被 Gatekeeper 拦（本包是 ad-hoc 签名）：右键 →「打开」，或
+
+```bash
+xattr -d com.apple.quarantine /Applications/HotPot.app
+```
+
+**当前能力**：菜单栏温度、agent 会话归并、单个/全部降温与恢复。
+**还没做**：刘海形态、5 分钟异常提醒、残留 dev server 提醒、开机自启。
+
+## 构建（开发）
 
 ```bash
 swift build -c release
-.build/release/HotPot
+.build/release/HotPot --dump
 ```
 
 需要 macOS 13+，Apple Silicon。
