@@ -15,12 +15,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: PanelWindow?
     private let model = AppModel()
     private let settings = SettingsWindowController()
+    private let dashboard = DashboardWindowController()
     private var titleTimer: Timer?
     private var outsideMonitor: Any?
     private var localMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.start()
+        MetricsStore.shared.rollupAndPurge()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem.button {
@@ -34,6 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NotificationCenter.default.addObserver(forName: .hotPotOpenSettings, object: nil, queue: .main) { [weak self] _ in
             self?.openSettings()
+        }
+        NotificationCenter.default.addObserver(forName: .hotPotOpenDashboard, object: nil, queue: .main) { [weak self] _ in
+            self?.closePanel()
+            self?.dashboard.show()
         }
 
         titleTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -98,6 +104,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         login.state = isLaunchAtLogin ? .on : .off
         menu.addItem(login)
 
+        menu.addItem(withTitle: L10n.t("资源看板…", "Dashboard…"),
+                     action: #selector(openDashboard), keyEquivalent: "").target = self
         menu.addItem(withTitle: L10n.t("偏好设置…", "Settings…"),
                      action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: L10n.t("编辑规则文件…", "Edit rules file…"),
@@ -128,6 +136,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettings() {
         closePanel()
         settings.show()
+    }
+
+    @objc private func openDashboard() {
+        closePanel()
+        dashboard.show()
     }
 
     @objc private func openRules() {

@@ -49,6 +49,8 @@ final class AppModel: ObservableObject {
     }
 
     private var tickCount = 0
+    /// 上次写看板采样的时刻（秒），用来算采样间隔和限流
+    private var lastSampleAt: TimeInterval = 0
 
     private func tick() {
         tickCount += 1
@@ -64,6 +66,25 @@ final class AppModel: ObservableObject {
             let sessions = needScan ? SessionAggregator.build(from: procs) : self.sessions
             let hot = needTemp ? (self.temp?.hottestSilicon() ?? self.temp?.hottestAny()) : nil
             let ports = needPorts ? PortScanner.scan() : self.devServices
+
+            // 看板采样：面板开 5 秒一次，关着 30 秒一次（跟扫描节奏走，不额外扫表）
+            if needScan {
+                let now = Date().timeIntervalSince1970
+                let gap = now - self.lastSampleAt
+                let minGap: TimeInterval = self.panelOpen ? 5 : 30
+                if self.lastSampleAt == 0 || gap >= minGap {
+                    if self.lastSampleAt > 0 {
+                        MetricsStore.shared.record(
+                            agents: sessions.map { (id: $0.def.id, cpuPercent: $0.cpuPercent,
+                                                    memMB: $0.memMB, procs: $0.pids.count) },
+                            temp: self.temperature > 0 ? self.temperature : nil,
+                            ports: needPorts ? ports : [],
+                            at: Int(now),
+                            interval: gap)
+                    }
+                    self.lastSampleAt = now
+                }
+            }
 
             // 历史与预警只在拿到新会话时更新，避免关面板时拿旧数据重复记账
             var nextAlerts: [Int32: TimeInterval]? = nil

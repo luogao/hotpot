@@ -68,6 +68,36 @@ if argv.contains("--cool-test") {
     exit(0)
 }
 
+if argv.contains("--seed-metrics") {
+    // 造 24 小时假数据，给截图/验证用（配合 HOTPOT_METRICS_DB 指向临时库）
+    let store = MetricsStore.shared
+    let now = Int(Date().timeIntervalSince1970)
+    for i in stride(from: 24 * 3600, through: 0, by: -300) {
+        let ts = now - i
+        let phase = Double(i) / 3600.0
+        let claude = 25 + 45 * abs(sin(phase * 1.3))
+        let codex = 12 + 30 * abs(sin(phase * 0.7 + 1.1))
+        let ffmpeg = max(0, 70 * sin(phase * 2.4 - 0.6))
+        let gemini = max(0, 18 * sin(phase * 0.4 + 2))
+        store.record(agents: [
+            (id: "claude", cpuPercent: claude, memMB: 820, procs: 7),
+            (id: "codex", cpuPercent: codex, memMB: 540, procs: 4),
+            (id: "ffmpeg", cpuPercent: ffmpeg, memMB: 300, procs: 2),
+            (id: "gemini", cpuPercent: gemini, memMB: 260, procs: 3),
+        ], temp: 45 + 24 * abs(sin(phase * 0.9 + 0.3)),
+           ports: Int(phase) % 3 == 0 ? [
+               DevService(pid: 90001, port: 5173, command: "node", uptime: 3600, stray: false,
+                          cwd: "/Users/gaogao/Documents/Hermes/video-studio-agent/packages/web"),
+               DevService(pid: 90002, port: 3000, command: "node", uptime: 7200, stray: true,
+                          cwd: "/Users/gaogao/Documents/Hermes/hotpot-website"),
+           ] : [],
+           at: ts, interval: 300)
+    }
+    Thread.sleep(forTimeInterval: 2.0)
+    print("seeded")
+    exit(0)
+}
+
 if argv.contains("--render") {
     // 离屏渲染面板 PNG（不需要屏幕录制权限）
     let model = AppModel()
@@ -114,11 +144,14 @@ if argv.contains("--render") {
     let out = (argv.first(where: { $0.hasPrefix("--out=") })?.dropFirst(6)).map(String.init)
         ?? "/Users/gaogao/Documents/Hermes/whoscooking-oss/poc-panel.png"
     let renderSettings = argv.contains("--settings")
+    let renderDashboard = argv.contains("--dashboard")
     MainActor.assumeIsolated {
         // 离屏渲染时 ScrollView 会整块空白，两张图各自关掉滚动
         let initialTab: PanelTab = argv.contains("--tab=ports") ? .ports : .agents
         let openPort = argv.contains("--port-open") ? model.devServices.first?.id : nil
-        let view = renderSettings
+        let view = renderDashboard
+            ? AnyView(DashboardView(preload: true))
+            : renderSettings
             ? AnyView(SettingsView(onClose: {}, scrollable: false))
             : AnyView(PanelView(model: model, scrollable: argv.contains("--snapshot"),
                                 initialTab: initialTab, initialPort: openPort))
@@ -126,7 +159,7 @@ if argv.contains("--render") {
         let useHost = argv.contains("--snapshot")
         if useHost {
             let host = NSHostingView(rootView: view)
-            let win = renderSettings ? NSSize(width: 640, height: 760) : NSSize(width: 340, height: 580)
+            let win = (renderSettings || renderDashboard) ? NSSize(width: 640, height: 760) : NSSize(width: 340, height: 580)
             host.frame = NSRect(origin: .zero, size: win)
             host.appearance = NSAppearance(named: .darkAqua)
             host.layoutSubtreeIfNeeded()

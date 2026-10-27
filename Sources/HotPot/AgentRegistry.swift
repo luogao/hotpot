@@ -66,6 +66,7 @@ struct AgentSession {
     let def: AgentDef
     let rootPid: pid_t
     var cpuPercent: Double
+    var memMB: Double = 0
     var pids: [pid_t]
     var busyChildren: [(name: String, cpu: Double)]
     var cooled: Bool
@@ -129,11 +130,12 @@ enum SessionAggregator {
         }
 
         // 4) 汇总
-        var acc: [pid_t: (cpu: Double, pids: [pid_t], kids: [(String, Double)], otherUid: Bool)] = [:]
+        var acc: [pid_t: (cpu: Double, mem: Double, pids: [pid_t], kids: [(String, Double)], otherUid: Bool)] = [:]
         for p in procs {
             guard let o = owner[p.pid] else { continue }
-            var e = acc[o] ?? (0, [], [], false)
+            var e = acc[o] ?? (0, 0, [], [], false)
             e.cpu += p.cpuPercent
+            e.mem += Double(p.memBytes) / 1024 / 1024
             e.pids.append(p.pid)
             if p.cpuPercent >= 3, p.pid != o {
                 e.kids.append((shortName(p), p.cpuPercent))
@@ -148,6 +150,7 @@ enum SessionAggregator {
                 def: d,
                 rootPid: r,
                 cpuPercent: (e.cpu * 10).rounded() / 10,
+                memMB: (e.mem * 10).rounded() / 10,
                 pids: e.pids.sorted(),
                 busyChildren: e.kids.sorted { $0.1 > $1.1 },
                 cooled: false,

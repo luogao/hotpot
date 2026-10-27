@@ -442,6 +442,17 @@ struct PanelView: View {
                     .tracking(0.2)
                     .foregroundStyle(Theme.ink2)
                 Spacer(minLength: 0)
+                Button {
+                    NotificationCenter.default.post(name: .hotPotOpenDashboard, object: nil)
+                } label: {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.ink2.opacity(0.8))
+                        .frame(width: 16, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(L10n.t("资源看板", "Dashboard"))
                 SettingsButton()
                 Button {
                     NSApplication.shared.terminate(nil)
@@ -688,6 +699,7 @@ struct SettingsButton: View {
 }
 
 extension Notification.Name {
+    static let hotPotOpenDashboard = Notification.Name("hotPotOpenDashboard")
     static let hotPotOpenSettings = Notification.Name("hotpot.openSettings")
 }
 

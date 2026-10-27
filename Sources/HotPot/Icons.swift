@@ -8,9 +8,12 @@ enum IconStore {
 
     static func image(_ id: String) -> NSImage? {
         if let hit = cache[id] { return hit }
-        guard let dir = Bundle.main.resourcePath else { return nil }
-        let path = dir + "/Icons/\(id).png"
-        guard let img = NSImage(contentsOfFile: path) else { return nil }
+        // 离屏渲染跑的是 .build/debug 二进制，bundle 里没有 Icons，退回源码目录
+        var candidates: [String] = []
+        if let dir = Bundle.main.resourcePath { candidates.append(dir + "/Icons/\(id).png") }
+        candidates.append(FileManager.default.currentDirectoryPath + "/Resources/Icons/\(id).png")
+        guard let path = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }),
+              let img = NSImage(contentsOfFile: path) else { return nil }
         img.isTemplate = true
         cache[id] = img
         return img

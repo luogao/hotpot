@@ -11,6 +11,7 @@ struct ProcInfo {
     let args: String        // 命令行
     var cpuTimeNs: UInt64 = 0
     var cpuPercent: Double = 0
+    var memBytes: UInt64 = 0
     var otherUid = false    // 属于别的用户（无权限降级）
 }
 
@@ -58,6 +59,7 @@ final class ProcessScanner {
                 fullPath = String(cString: pathBuf)
             }
             var cpuNs: UInt64 = 0
+            var memBytes: UInt64 = 0
             var raw = [UInt8](repeating: 0, count: MemoryLayout<rusage_info_v4>.size)
             let kr = raw.withUnsafeMutableBytes { buf -> Int32 in
                 proc_pid_rusage(pid, RUSAGE_INFO_V4,
@@ -68,6 +70,7 @@ final class ProcessScanner {
                 // 坑：ri_*_time 返回的是 mach absolute time 单位，不是 ns，必须按 timebase 换算
                 let ticks = rv.ri_user_time + rv.ri_system_time
                 cpuNs = UInt64(Double(ticks) * Self.nsPerTick)
+                memBytes = rv.ri_resident_size
             }
 
             let args = Self.arguments(pid: pid)
@@ -80,6 +83,7 @@ final class ProcessScanner {
                 path: fullPath.isEmpty ? path : fullPath,
                 args: args,
                 cpuTimeNs: cpuNs,
+                memBytes: memBytes,
                 otherUid: info.pbi_uid != myUid
             ))
         }
