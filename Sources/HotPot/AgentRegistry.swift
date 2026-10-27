@@ -48,8 +48,14 @@ enum AgentRegistry {
         let hay = base + " " + args
         for d in all {
             if d.excludes.contains(where: { hay.contains($0.lowercased()) }) { continue }
-            // 精确名优先：pi 只认 basename == "pi"，不会吃掉 pip / ping / python
-            if let bin = d.bin?.lowercased(), base == bin { return d }
+            // 精确名优先：pi 是 node CLI，真正的进程是 node，靠 args 里的脚本路径认。
+            // 逐个 token 比 basename，避免 "/bin/pi" 的子串误伤 "/bin/ping"。
+            if let bin = d.bin?.lowercased() {
+                if base == bin { return d }
+                for tok in p.args.split(separator: " ") {
+                    if (String(tok) as NSString).lastPathComponent.lowercased() == bin { return d }
+                }
+            }
             if d.patterns.contains(where: { hay.contains($0.lowercased()) }) { return d }
         }
         return nil

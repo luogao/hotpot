@@ -161,12 +161,16 @@ func runDump() {
         }
     }
 
+    print("\n=== 规则 ===")
+    print("  \(Rules.shared.agents.count) 个: " + Rules.shared.agents.map(\.id).joined(separator: ", "))
+
     print("\n=== Agent 会话 ===")
     let scanner = ProcessScanner()
     _ = scanner.scan()                    // 第一次采样只建基线
     Thread.sleep(forTimeInterval: 1.0)
     let procs = scanner.scan()
     print("  进程总数: \(procs.count)")
+
     let sessions = SessionAggregator.build(from: procs)
     if sessions.isEmpty { print("  (无)") }
     for s in sessions {
