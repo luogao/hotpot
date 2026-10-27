@@ -124,8 +124,8 @@ PMU tdie8  41.5℃
 
 ```bash
 swift build
-.build/debug/WhoCooking --dump
-.build/debug/WhoCooking --cool-test
+.build/debug/HotPot --dump
+.build/debug/HotPot --cool-test
 ```
 
 造负载（Python，避免 shell 后台限制）：

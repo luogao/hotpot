@@ -12,7 +12,7 @@
 
 ```
 Package.swift                     SPM 定义，单 executableTarget，macOS 13+
-Sources/WhoCooking/
+Sources/HotPot/
 ├── main.swift                    入口；--dump / --cool-test / --render / --demo 自检分支
 ├── TemperatureReader.swift       IOHID 私有 API 读芯片温度（免 sudo）
 ├── ProcessScanner.swift          libproc 全表扫描 + rusage 差分算 CPU%
@@ -30,10 +30,10 @@ poc-panel.png                     离屏渲染的面板截图
 
 ```bash
 swift build
-.build/debug/WhoCooking --dump        # 温度 + agent 会话 + Top CPU（先跑这个）
-.build/debug/WhoCooking --cool-test   # 对最烫的 agent 降温 25s 再恢复，打印温度变化
-.build/debug/WhoCooking --render      # 离屏渲染面板 PNG，不依赖屏幕录制权限
-.build/debug/WhoCooking --demo        # 启动 GUI 并自动展开面板
+.build/debug/HotPot --dump        # 温度 + agent 会话 + Top CPU（先跑这个）
+.build/debug/HotPot --cool-test   # 对最烫的 agent 降温 25s 再恢复，打印温度变化
+.build/debug/HotPot --render      # 离屏渲染面板 PNG，不依赖屏幕录制权限
+.build/debug/HotPot --demo        # 启动 GUI 并自动展开面板
 ```
 
 改完代码先跑 `--dump`，确认数据层没坏，再看 UI。

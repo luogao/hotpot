@@ -33,7 +33,7 @@
 ### 2.1 温度读取（免 sudo）
 
 ```
-$ .build/debug/WhoCooking --dump
+$ .build/debug/HotPot --dump
 === 温度 ===
   芯片最高: 43.1℃ (PMU tdie11)
     PMU2 tcal  51.8℃      ← 校准参考值，需排除
@@ -161,7 +161,7 @@ HotPot.app
 
 #### ① 温度：IOHIDEventSystemClient
 
-`Sources/WhoCooking/TemperatureReader.swift:30-62`
+`Sources/HotPot/TemperatureReader.swift:30-62`
 
 ```
 IOHIDEventSystemClientCreate() → CopyServices() → 遍历
@@ -177,7 +177,7 @@ IOHIDEventSystemClientCreate() → CopyServices() → 遍历
 
 #### ② 进程扫描：libproc
 
-`Sources/WhoCooking/ProcessScanner.swift:35-96`
+`Sources/HotPot/ProcessScanner.swift:35-96`
 
 ```
 proc_listallpids(&pids, size)          // 全表
@@ -195,7 +195,7 @@ sysctl(KERN_PROCARGS2)                 // argv（同用户免 root）
 
 #### ③ 归因：三层兜底
 
-`Sources/WhoCooking/AgentRegistry.swift:44-60` + `SessionAggregator.build`
+`Sources/HotPot/AgentRegistry.swift:44-60` + `SessionAggregator.build`
 
 1. **指纹匹配**：basename + argv 里出现 `claude` / `codex` / `cursor-agent` …
 2. **去噪**：命中 `crash` / `helper` / `framework` / `xpcservice` 的直接丢弃（否则 Codex 桌面版的崩溃上报进程会被当成 Codex CLI）
@@ -203,7 +203,7 @@ sysctl(KERN_PROCARGS2)                 // argv（同用户免 root）
 
 #### ④ 降温：taskpolicy
 
-`Sources/WhoCooking/Cooler.swift:22-40`
+`Sources/HotPot/Cooler.swift:22-40`
 
 ```
 /usr/sbin/taskpolicy -b -p <pid>    # 降到 Background QoS → 只跑 E 核

@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "WhoCooking",
+    name: "HotPot",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "WhoCooking",
-            path: "Sources/WhoCooking",
+            name: "HotPot",
+            path: "Sources/HotPot",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
