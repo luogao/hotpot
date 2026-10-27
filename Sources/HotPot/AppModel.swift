@@ -84,7 +84,17 @@ final class AppModel: ObservableObject {
                 if needScan { self.processCount = procs.count }
                 self.sessions = sessions
                 if let nextAlerts { self.alerts = nextAlerts }
-                if needPorts { self.devServices = ports }
+                if needPorts {
+                    self.devServices = ports
+                    // 服务类型探测会打一次本地 HTTP，别占住这轮刷新
+                    self.queue.async { [weak self] in
+                        var enriched = ports
+                        for i in enriched.indices {
+                            enriched[i].purpose = ServiceProbe.detect(port: enriched[i].port, bind: enriched[i].bind)
+                        }
+                        DispatchQueue.main.async { self?.devServices = enriched }
+                    }
+                }
 
                 if needScan {
                     // 清掉已退出进程的降温标记

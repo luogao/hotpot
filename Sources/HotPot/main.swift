@@ -83,9 +83,18 @@ if argv.contains("--render") {
     }
     if argv.contains("--dev") {
         model.devServices = [
-            DevService(pid: 90001, port: 3000, command: "node", uptime: 5400, stray: true),
-            DevService(pid: 90002, port: 5173, command: "node", uptime: 2100, stray: true),
-            DevService(pid: 90003, port: 8000, command: "python", uptime: 720, stray: false),
+            DevService(pid: 90001, port: 3000, command: "node", uptime: 5400, stray: true,
+                       bind: "127.0.0.1", argv: "node server.js --port 3000",
+                       cwd: "/Users/gaogao/Documents/Hermes/hotpot-website", parentName: "launchd", parentPid: 1,
+                       purpose: "Express"),
+            DevService(pid: 90002, port: 5173, command: "node", uptime: 2100, stray: true,
+                       bind: "::1", argv: "node .../vite/bin/vite.js --port 5173",
+                       cwd: "/Users/gaogao/Documents/Hermes/video-studio-agent/packages/web",
+                       parentName: "pnpm", parentPid: 77241, purpose: "Vite"),
+            DevService(pid: 90003, port: 8000, command: "python", uptime: 720, stray: false,
+                       bind: "*", argv: "python3 manage.py runserver 8000",
+                       cwd: "/Users/gaogao/Documents/Hermes/netflav_crawler", parentName: "zsh", parentPid: 9901,
+                       purpose: "Netflav 数据浏览器"),
         ]
     }
     if argv.contains("--many"), let seed = model.sessions.first {
@@ -108,9 +117,11 @@ if argv.contains("--render") {
     MainActor.assumeIsolated {
         // 离屏渲染时 ScrollView 会整块空白，两张图各自关掉滚动
         let initialTab: PanelTab = argv.contains("--tab=ports") ? .ports : .agents
+        let openPort = argv.contains("--port-open") ? model.devServices.first?.id : nil
         let view = renderSettings
             ? AnyView(SettingsView(onClose: {}, scrollable: false))
-            : AnyView(PanelView(model: model, scrollable: argv.contains("--snapshot"), initialTab: initialTab))
+            : AnyView(PanelView(model: model, scrollable: argv.contains("--snapshot"),
+                                initialTab: initialTab, initialPort: openPort))
         // ImageRenderer 渲染 ScrollView 会整块空白，滚动版走 NSHostingView 离屏快照
         let useHost = argv.contains("--snapshot")
         if useHost {
@@ -152,9 +163,10 @@ if argv.contains("--render") {
 if argv.contains("--ports") {
     let list = PortScanner.scan()
     if list.isEmpty { print("没有检测到开发服务占端口") }
-    for s in list {
-        print(String(format: ":%d  %-8@ pid=%-7d 运行 %.0f 分钟%@", s.port, s.command as NSString,
-                     s.pid, s.uptime / 60, s.stray ? "  [残留]" : ""))
+    for s in list.prefix(6) {
+        let probe = ServiceProbe.detect(port: s.port, bind: s.bind) ?? "-"
+        print(":\(s.port) \(s.command) pid=\(s.pid) bind=\(s.bind) dir=\(s.shortDir.isEmpty ? "-" : s.shortDir) parent=\(s.parentName)(\(s.parentPid)) purpose=\(probe)")
+        if !s.argv.isEmpty { print("    argv: \(s.argv.prefix(110))") }
     }
     exit(0)
 }

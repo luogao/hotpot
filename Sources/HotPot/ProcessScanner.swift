@@ -101,7 +101,7 @@ final class ProcessScanner {
     }
 
     /// 读进程 argv（sysctl KERN_PROCARGS2），同用户免 root
-    private static func arguments(pid: pid_t) -> String {
+    static func arguments(pid: pid_t) -> String {
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
         var size = 0
         guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > 4, size < 1 << 20 else { return "" }

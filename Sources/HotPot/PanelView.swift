@@ -46,12 +46,15 @@ struct PanelView: View {
     @State private var tab: PanelTab
     @State private var showIdle = false
     @State private var hasMoreBelow = false
+    @State private var expandedPort: String?
     @State private var confirmingKill = false
 
-    init(model: AppModel, scrollable: Bool = true, initialTab: PanelTab = .agents) {
+    init(model: AppModel, scrollable: Bool = true,
+         initialTab: PanelTab = .agents, initialPort: String? = nil) {
         self.model = model
         self.scrollable = scrollable
         _tab = State(initialValue: initialTab)
+        _expandedPort = State(initialValue: initialPort)
     }
 
     private var isDanger: Bool { model.temperature >= 85 }
@@ -365,32 +368,93 @@ struct PanelView: View {
     }
 
     private func portRow(_ s: DevService, first: Bool) -> some View {
-        HStack(spacing: 10) {
-            Text(":" + String(s.port))
-                .font(.system(size: 11.5, design: .monospaced))
-                .foregroundStyle(Theme.ink3)
-                .frame(width: 52, alignment: .leading)
-            Text(s.command)
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.ink2)
-            Spacer(minLength: 0)
-            Text(s.uptimeText)
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(Theme.ink2.opacity(0.65))
-            if s.stray {
-                Text(L10n.t("残留", "stray"))
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 30, alignment: .trailing)
+        let open = expandedPort == s.id
+        return VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { expandedPort = open ? nil : s.id }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(":" + String(s.port))
+                        .font(.system(size: 11.5, design: .monospaced))
+                        .foregroundStyle(Theme.ink3)
+                        .frame(width: 48, alignment: .leading)
+                    Text(s.command)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.ink2)
+                    Spacer(minLength: 4)
+                    if let p = s.purpose, !p.isEmpty {
+                        Text(p)
+                            .font(.system(size: 9))
+                            .foregroundStyle(Theme.ink2.opacity(0.72))
+                            .lineLimit(1)
+                            .padding(.trailing, 2)
+                    }
+                    Text(s.uptimeText)
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(Theme.ink2.opacity(0.65))
+                    if s.stray {
+                        Text(L10n.t("残留", "stray"))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    Image(systemName: open ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 7.5, weight: .semibold))
+                        .foregroundStyle(Theme.ink2.opacity(0.45))
+                        .frame(width: 9)
+                }
+                .padding(.horizontal, 2)
+                .frame(height: 30)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+
+            if open { portDetail(s) }
         }
-        .padding(.horizontal, 2)
-        .frame(height: 30)
         .overlay(alignment: .top) {
             if !first {
                 Rectangle().fill(Theme.line).frame(height: 1)
             }
         }
+    }
+
+    private func portDetail(_ s: DevService) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if !s.cwd.isEmpty {
+                detailLine(L10n.t("目录", "dir"), s.shortDir)
+            }
+            if !s.argv.isEmpty {
+                detailLine(L10n.t("命令", "cmd"), shorten(s.argv, 120))
+            }
+            detailLine(L10n.t("进程", "pid"),
+                       "PID \(s.pid) · " + L10n.t("父", "parent") + " " +
+                       (s.parentName.isEmpty ? "launchd" : "\(s.parentName) (\(s.parentPid))"))
+            if !s.bind.isEmpty {
+                detailLine(L10n.t("监听", "bind"), "\(s.bind):\(s.port)")
+            }
+        }
+        .padding(.leading, 58)
+        .padding(.trailing, 4)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func detailLine(_ key: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 7) {
+            Text(key)
+                .font(.system(size: 9))
+                .foregroundStyle(Theme.ink2.opacity(0.5))
+                .frame(width: 24, alignment: .leading)
+            Text(value)
+                .font(.system(size: 9.5, design: .monospaced))
+                .foregroundStyle(Theme.ink2)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func shorten(_ s: String, _ limit: Int) -> String {
+        s.count <= limit ? s : String(s.prefix(limit)) + "…"
     }
 
     private var emptyPorts: some View {

@@ -8,8 +8,30 @@ struct DevService: Identifiable, Equatable {
     let command: String
     let uptime: TimeInterval
     let stray: Bool
+    /// 监听地址：127.0.0.1 / * / [::1]
+    var bind: String = ""
+    /// 完整命令行
+    var argv: String = ""
+    /// 启动时的工作目录（判断是哪个项目）
+    var cwd: String = ""
+    /// 父进程名（agent 起的话这里能看到）
+    var parentName: String = ""
+    var parentPid: Int32 = 0
+    /// HTTP 探测出来的服务类型：Vite / Next.js / Uvicorn…
+    var purpose: String?
 
     var id: String { "\(pid):\(port)" }
+
+    /// cwd 只显示最后两级，太长没法看
+    var shortDir: String {
+        guard !cwd.isEmpty else { return "" }
+        let home = NSHomeDirectory()
+        var p = cwd
+        if p.hasPrefix(home) { p = "~" + p.dropFirst(home.count) }
+        let parts = p.split(separator: "/")
+        if parts.count > 3 { return "…/" + parts.suffix(2).joined(separator: "/") }
+        return p
+    }
 
     var uptimeText: String {
         let h = Int(uptime) / 3600
@@ -37,9 +59,10 @@ enum PortScanner {
         var curPid: Int32 = 0
         var curCmd = ""
         var curPorts: Set<Int> = []
+        var curBinds: [Int: String] = [:]
 
         func flush() {
-            defer { curPorts.removeAll() }
+            defer { curPorts.removeAll(); curBinds.removeAll() }
             guard curPid > 0, !curPorts.isEmpty else { return }
             let base = (curCmd as NSString).lastPathComponent.lowercased()
             guard !ignoreCommands.contains(where: { base.contains($0) }) else { return }
@@ -47,9 +70,15 @@ enum PortScanner {
             let ppid = parentPid(curPid) ?? 0
             let age = runTime(curPid) ?? 0
             let stray = ppid == 1 && age < maxAge
+            let cwd = workingDirectory(curPid) ?? ""
+            let argv = ProcessScanner.arguments(pid: curPid)
+            let pname = processName(ppid) ?? ""
             for p in curPorts where p >= 1024 {
                 results.append(DevService(pid: curPid, port: p, command: base,
-                                          uptime: age, stray: stray))
+                                          uptime: age, stray: stray,
+                                          bind: curBinds[p] ?? "",
+                                          argv: argv, cwd: cwd,
+                                          parentName: pname, parentPid: ppid))
             }
         }
 
@@ -64,7 +93,10 @@ enum PortScanner {
             case "c":
                 curCmd = value
             case "n":
-                if let p = parsePort(value) { curPorts.insert(p) }
+                if let p = parsePort(value) {
+                    curPorts.insert(p)
+                    curBinds[p] = bindHost(value)
+                }
             default:
                 break
             }
@@ -110,6 +142,36 @@ enum PortScanner {
     private static func parsePort(_ name: String) -> Int? {
         guard let colon = name.lastIndex(of: ":") else { return nil }
         return Int(name[name.index(after: colon)...])
+    }
+
+    /// "127.0.0.1:5173" → "127.0.0.1"；"*:3000" → "*"
+    private static func bindHost(_ name: String) -> String {
+        guard let colon = name.lastIndex(of: ":") else { return name }
+        var host = String(name[..<colon])
+        if host.hasPrefix("[") && host.hasSuffix("]") {
+            host = String(host.dropFirst().dropLast())
+        }
+        return host
+    }
+
+    /// 进程当前工作目录：用来判断这服务属于哪个项目
+    private static func workingDirectory(_ pid: Int32) -> String? {
+        var info = proc_vnodepathinfo()
+        let size = Int32(MemoryLayout<proc_vnodepathinfo>.size)
+        guard proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &info, size) > 0 else { return nil }
+        let path = withUnsafeBytes(of: &info.pvi_cdir.vip_path) { raw -> String in
+            guard let base = raw.baseAddress else { return "" }
+            return String(cString: base.assumingMemoryBound(to: CChar.self))
+        }
+        return path.isEmpty ? nil : path
+    }
+
+    private static func processName(_ pid: Int32) -> String? {
+        guard pid > 0 else { return nil }
+        var buf = [CChar](repeating: 0, count: 256)
+        guard proc_name(pid, &buf, 256) > 0 else { return nil }
+        let s = String(cString: buf)
+        return s.isEmpty ? nil : s
     }
 
     // MARK: - 进程属性
