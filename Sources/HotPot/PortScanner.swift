@@ -22,17 +22,10 @@ struct DevService: Identifiable, Equatable {
 enum PortScanner {
 
     /// 开发服务器常见命令（lsof 的命令名会被截到 9-15 字符）
-    private static let devCommands = [
-        "node", "python", "ruby", "php", "deno", "bun", "java",
-        "vite", "next", "nuxt", "webpack", "uvicorn", "gunicorn",
-        "flask", "django", "rails", "puma", "hugo", "jekyll",
-    ]
+    private static var devCommands: [String] { Rules.shared.devServerCommands }
 
     /// 这些端口的持有者大概率是长期服务，不提示
-    private static let ignoreCommands = [
-        "redis", "rapportd", "tailscaled", "jellyfin", "postgres", "mysqld",
-        "mongod", "dockerd", "ollama", "sshd", "nginx",
-    ]
+    private static var ignoreCommands: [String] { Rules.shared.ignorePortCommands }
 
     /// - Parameters:
     ///   - maxAge: 超过这个运行时长就不算「刚才不小心留下的」

@@ -18,8 +18,9 @@ final class AppModel: ObservableObject {
 
     private let scanner = ProcessScanner()
     private let temp = TemperatureReader()
-    /// 5 分钟窗口、单会话超过 200%（双核满载）算异常
-    private let history = SessionHistory(threshold: 200, sustain: 300)
+    /// 阈值来自 rules.json 的 alert 段（默认 5 分钟、200% CPU）
+    private let history = SessionHistory(threshold: Rules.shared.alert.cpuPercent,
+                                         sustain: Rules.shared.alert.sustainSeconds)
     private let queue = DispatchQueue(label: "whoiscooking.scan", qos: .utility)
     private var timer: Timer?
     private var warming = true
@@ -142,10 +143,10 @@ enum HeatLevel {
     case cool, warm, hot, critical
     var label: String {
         switch self {
-        case .cool: return "凉"
-        case .warm: return "温热"
-        case .hot: return "烫"
-        case .critical: return "过热降频"
+        case .cool: return L10n.t("凉", "Cool")
+        case .warm: return L10n.t("温热", "Warm")
+        case .hot: return L10n.t("烫", "Hot")
+        case .critical: return L10n.t("过热降频", "Throttling")
         }
     }
     var color: NSColor {

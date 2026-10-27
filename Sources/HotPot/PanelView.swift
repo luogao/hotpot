@@ -46,15 +46,15 @@ struct PanelView: View {
             Circle()
                 .fill(alerting ? Theme.danger : accent)
                 .frame(width: 5, height: 5)
-            Text(alerting ? "\(model.alertCount) 个持续满载" : model.level.label)
+            Text(alerting ? L10n.t("\(model.alertCount) 个持续满载", "\(model.alertCount) sustained") : model.level.label)
                 .font(.system(size: 11))
                 .tracking(0.6)
                 .foregroundStyle((alerting || isDanger) ? Theme.danger : Theme.ink2)
             Spacer(minLength: 8)
             if model.cooled.isEmpty {
-                OutlineButton(title: "全部降温", tint: accent) { model.coolAll() }
+                OutlineButton(title: L10n.t("全部降温", "Cool all"), tint: accent) { model.coolAll() }
             } else {
-                OutlineButton(title: "恢复全速", tint: accent) { model.restoreAll() }
+                OutlineButton(title: L10n.t("恢复全速", "Restore"), tint: accent) { model.restoreAll() }
             }
         }
         .frame(height: 30)
@@ -76,7 +76,7 @@ struct PanelView: View {
                     .padding(.top, 7)
             }
 
-            Text("hottest sensor · \(model.sensorName.isEmpty ? "—" : model.sensorName)")
+            Text(L10n.t("最热传感器", "hottest sensor") + " · " + (model.sensorName.isEmpty ? "—" : model.sensorName))
                 .font(.system(size: 10, design: .monospaced))
                 .tracking(0.2)
                 .foregroundStyle(Theme.ink2)
@@ -121,10 +121,10 @@ struct PanelView: View {
     private var emptyState: some View {
         HStack {
             VStack(alignment: .leading, spacing: 8) {
-                Text("当前没有 agent 在跑")
+                Text(L10n.t("当前没有 agent 在跑", "No agents running"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.ink)
-                Text("Claude Code / Codex / Cursor 一启动就会出现在这里")
+                Text(L10n.t("Claude Code / Codex / Cursor 一启动就会出现在这里", "They show up here as soon as you start one"))
                     .font(.system(size: 10.5))
                     .foregroundStyle(Theme.ink2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -144,11 +144,11 @@ struct PanelView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 9))
                     .foregroundStyle(Theme.accent)
-                Text("\(model.devServices.count) 个服务仍在占端口")
+                Text(L10n.t("\(model.devServices.count) 个服务仍在占端口", "\(model.devServices.count) services holding ports"))
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(Theme.ink3)
                 Spacer(minLength: 0)
-                Button("关闭") { confirmingKill = true }
+                Button(L10n.t("关闭", "Kill")) { confirmingKill = true }
                     .buttonStyle(.plain)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Theme.accent)
@@ -160,9 +160,9 @@ struct PanelView: View {
                 .truncationMode(.tail)
         }
         .padding(.top, 10)
-        .alert("关闭 \(model.devServices.count) 个开发服务？", isPresented: $confirmingKill) {
-            Button("关闭进程", role: .destructive) { model.killDevServices() }
-            Button("取消", role: .cancel) {}
+        .alert(L10n.t("关闭 \(model.devServices.count) 个开发服务？", "Kill \(model.devServices.count) dev services?"), isPresented: $confirmingKill) {
+            Button(L10n.t("关闭进程", "Kill processes"), role: .destructive) { model.killDevServices() }
+            Button(L10n.t("取消", "Cancel"), role: .cancel) {}
         } message: {
             Text(model.devServices.map { ":\($0.port) \($0.command)" }.joined(separator: "、"))
         }
@@ -172,7 +172,7 @@ struct PanelView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            Text("\(model.processCount) 个进程 · \(model.cooled.count) 个进程已降温")
+            Text(L10n.t("\(model.processCount) 个进程 · \(model.cooled.count) 个已降温", "\(model.processCount) processes · \(model.cooled.count) cooled"))
                 .font(.system(size: 10, design: .monospaced))
                 .tracking(0.2)
                 .foregroundStyle(Theme.ink2)
@@ -185,7 +185,7 @@ struct PanelView: View {
                     .foregroundStyle(Theme.ink2.opacity(0.8))
             }
             .buttonStyle(.plain)
-            .help("退出 HotPot")
+            .help(L10n.t("退出 HotPot", "Quit HotPot"))
         }
         .padding(.top, 12)
         .overlay(alignment: .top) {
@@ -234,15 +234,17 @@ struct SessionRow: View {
     private var alerting: Bool { alert != nil && !cooled }
 
     private var subtitle: String {
-        if session.hasOtherUid { return "root 进程 · 无法降温" }
-        if cooled { return "已降到能效核 · 任务继续跑" }
-        if let alert { return "连续满载 \(Self.duration(alert))" }
-        return "\(session.summary) · \(session.pids.count) 进程"
+        if session.hasOtherUid { return L10n.t("root 进程 · 无法降温", "root process · cannot cool") }
+        if cooled { return L10n.t("已降到能效核 · 任务继续跑", "On efficiency cores · still running") }
+        if let alert { return L10n.t("连续满载 \(Self.duration(alert))", "Sustained \(Self.duration(alert))") }
+        let n = session.pids.count
+        return L10n.t("\(session.summary) · \(n) 进程",
+                      "\(session.summary) · \(n) " + (n == 1 ? "proc" : "procs"))
     }
 
     static func duration(_ s: TimeInterval) -> String {
         let m = Int(s) / 60, sec = Int(s) % 60
-        return m > 0 ? "\(m) 分 \(sec) 秒" : "\(sec) 秒"
+        return L10n.isChinese ? (m > 0 ? "\(m) 分 \(sec) 秒" : "\(sec) 秒") : (m > 0 ? "\(m)m \(sec)s" : "\(sec)s")
     }
 
     var body: some View {
@@ -282,7 +284,7 @@ struct SessionRow: View {
             }
             .buttonStyle(.plain)
             .disabled(session.hasOtherUid)
-            .help(session.hasOtherUid ? "root 进程无法降温" : (cooled ? "恢复全速" : "降到能效核，不中断任务"))
+            .help(session.hasOtherUid ? L10n.t("root 进程无法降温", "root process cannot be cooled") : (cooled ? L10n.t("恢复全速", "Restore full speed") : L10n.t("降到能效核，不中断任务", "Move to efficiency cores, keep running")))
         }
         .frame(height: 60)
         // 预警用左侧竖条标记，不用整块底色：底块会读成「卡片」，和面板的无卡片语言冲突

@@ -10,36 +10,16 @@ struct AgentDef {
     let excludes: [String]
 }
 
-/// 对齐原产品支持列表，可在此扩展
+/// 规则表来自 `~/Library/Application Support/HotPot/rules.json`，
+/// 文件缺失或解析失败时回退 Rules.default（内置 11 项）。
 enum AgentRegistry {
-    static let all: [AgentDef] = [
-        AgentDef(id: "claude", name: "Claude Code", symbol: "asterisk",
-                 patterns: ["claude", ".claude/local"],
-                 excludes: ["Claude.app", "Claude Helper", "claude.ai"]),
-        AgentDef(id: "codex", name: "Codex CLI", symbol: "terminal",
-                 patterns: ["codex"],
-                 excludes: ["Codex.app/Contents/Frameworks"]),
-        AgentDef(id: "cursor", name: "Cursor", symbol: "cursorarrow",
-                 patterns: ["cursor-agent", "Cursor Helper (Renderer)"],
-                 excludes: []),
-        AgentDef(id: "gemini", name: "Gemini CLI", symbol: "sparkles",
-                 patterns: ["gemini"], excludes: ["Gemini.app"]),
-        AgentDef(id: "aider", name: "Aider", symbol: "chevron.left.forwardslash.chevron.right",
-                 patterns: ["aider"], excludes: []),
-        AgentDef(id: "copilot", name: "Copilot CLI", symbol: "person.crop.circle",
-                 patterns: ["copilot"], excludes: []),
-        AgentDef(id: "ollama", name: "Ollama", symbol: "circle.hexagongrid",
-                 patterns: ["ollama"], excludes: []),
-        AgentDef(id: "lmstudio", name: "LM Studio", symbol: "cube",
-                 patterns: ["LM Studio", "lms "], excludes: []),
-        AgentDef(id: "xcode", name: "Xcode Build", symbol: "hammer",
-                 patterns: ["xcodebuild", "swift-build", "swift-frontend", "clang"],
-                 excludes: ["SourceKit", "clangd"]),
-        AgentDef(id: "ffmpeg", name: "ffmpeg", symbol: "film",
-                 patterns: ["ffmpeg"], excludes: []),
-        AgentDef(id: "docker", name: "Docker", symbol: "shippingbox",
-                 patterns: ["com.docker", "docker"], excludes: ["Docker Desktop"]),
-    ]
+    static let all: [AgentDef] = Rules.shared.agents.map { rule in
+        AgentDef(id: rule.id,
+                 name: rule.name,
+                 symbol: rule.symbol ?? "circle.dashed",
+                 patterns: rule.patterns,
+                 excludes: rule.excludes ?? [])
+    }
 
     static func match(_ p: ProcInfo) -> AgentDef? {
         let base = (p.path as NSString).lastPathComponent.lowercased()
@@ -71,8 +51,9 @@ struct AgentSession {
     var hasOtherUid: Bool
 
     var summary: String {
-        if busyChildren.isEmpty { return "idle" }
-        return "running: " + busyChildren.prefix(3).map { $0.name }.joined(separator: ", ")
+        if busyChildren.isEmpty { return L10n.t("空闲", "idle") }
+        let names = busyChildren.prefix(3).map { $0.name }.joined(separator: ", ")
+        return L10n.t("运行中：", "running: ") + names
     }
 }
 
