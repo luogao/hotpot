@@ -1,19 +1,31 @@
 # HotPot
 
-> 谁在烧我的 Mac？一个开源的小工具，告诉你哪个 AI agent 正在把机器烤热，并把它挪到能效核降温 —— 不打断它的工作。
+[![Release](https://img.shields.io/github/v/release/luogao/hotpot?color=E8A230)](https://github.com/luogao/hotpot/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Platform](https://img.shields.io/badge/macOS-13%2B%20Apple%20Silicon-black)](#安装)
+
+**谁在烧我的 Mac？**
+
+跑几个 AI agent，风扇就开始转。想知道是哪个在烤机器、已经烤了多久、能不能让它凉快一点 —— Activity Monitor 只会甩给你一堆 `node` 和 `claude`。
+
+HotPot 住在菜单栏，告诉你哪个 agent 正在满载、把它的整棵进程树合成一行，然后可以把它挪到能效核降温 —— **不中断，不杀进程**。
 
 <p align="center">
-  <img src="docs/ui/panel-v3.png" height="460" alt="菜单栏面板">&nbsp;&nbsp;&nbsp;
-  <img src="docs/ui/settings-v7.png" height="460" alt="设置窗口">
+  <img src="docs/ui/panel-v3.png" height="440" alt="菜单栏面板">&nbsp;&nbsp;&nbsp;
+  <img src="docs/ui/settings-v7.png" height="440" alt="设置窗口">
 </p>
 
-## 状态
+<p align="center"><sub>左：菜单栏面板　右：设置窗口</sub></p>
 
-M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / 连续满载预警 / 端口监控 / 设置窗口。
+## 功能
 
-- 需求与设计：[PRD.md](PRD.md)
-- 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
-- 给协作者/AI agent 的说明：AGENTS.md
+- **实时芯片温度** — 菜单栏直接显示 `52°`，按温度变色
+- **agent 会话归并** — 一个 agent 的 node/npm/子进程合成一行，不刷屏
+- **一键降温** — 把会话降到能效核，进程继续跑，只是慢一点；随时恢复
+- **连续满载预警** — 某个会话连续 5 分钟超 200% CPU，行内标红并显示持续时长
+- **端口监控** — 谁占着 `:5173`；终端关了进程还在的标「残留」，可一键关掉
+- **资源看板** — 1h/24h/7d/30d 窗口，看谁累计烧的 CPU 最多、温度什么时候飙起来的
+- **广泛的 agent 支持** — Claude Code / Codex / Cursor / Gemini CLI / Aider / Copilot CLI / Pi / Ollama / LM Studio / Xcode Build / ffmpeg / Docker
 
 ## 安装
 
@@ -23,14 +35,16 @@ M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / �
 brew install --cask luogao/tap/hotpot
 ```
 
-一条命令：Homebrew 会自动 tap 并信任这个 cask，装完直接能用（已去掉 quarantine）。
-
-> 不要用 `brew install --cask <raw URL>` —— 新版 Homebrew 不再支持从 URL 直接装 cask，
-> 会把 URL 当成 cask 名去查，报 `No Cask with this name exists`。
+一条命令搞定，cask 里已经去掉了 quarantine，装完直接能用。
 
 **下载发行版**
 
-到 [Releases](https://github.com/luogao/hotpot/releases) 下 `HotPot-<version>.zip`，解压后拖进 `/Applications`。
+到 [Releases](https://github.com/luogao/hotpot/releases) 下载 `HotPot-<version>.zip`，解压拖进 `/Applications`。
+
+> 本包是 ad-hoc 签名，首次打开可能被 Gatekeeper 拦。右键 →「打开」，或者：
+> ```bash
+> xattr -d com.apple.quarantine /Applications/HotPot.app
+> ```
 
 **从源码**
 
@@ -42,50 +56,23 @@ cp -R build/HotPot.app /Applications/
 open /Applications/HotPot.app
 ```
 
-启动后菜单栏出现 `52°`，点一下展开面板。没有 Dock 图标（`LSUIElement`）。
+> 别用 `brew install --cask <raw URL>` —— 新版 Homebrew 不支持从 URL 装 cask，
+> 会把 URL 当 cask 名去查，报 `No Cask with this name exists`。
 
-首次打开若被 Gatekeeper 拦（本包是 ad-hoc 签名）：右键 →「打开」，或
+## 使用
 
-```bash
-xattr -d com.apple.quarantine /Applications/HotPot.app
-```
+1. 启动后菜单栏出现 `52°`，没有 Dock 图标
+2. 点一下展开面板，看到当前所有 agent 会话、CPU、子进程
+3. 某一行的数字太吓人，点它右边的降温按钮；想全降就点底部的「全部降温」
+4. 忙完了点「恢复」，进程回到正常调度
 
-**当前能力**
+右键菜单栏图标还有：资源看板、偏好设置、开机自启（默认关）、退出。
 
-1. 菜单栏实时芯片温度，按温度变色
-2. agent 会话归并：一个 agent 的 node/npm 子进程合成一行
-3. 单个 / 全部降温与恢复（`taskpolicy` 降到能效核，进程不中断）
-4. **连续满载预警**：某个会话连续 5 分钟超过 200% CPU，行内标红并显示已持续多久（面板内提示，不弹系统通知）
-5. **端口监控**：列出 node / vite / python 这些开发服务占着的端口；终端关了但进程还在的标「残留」，可一键关闭
-6. **设置窗口**：开机自启、预警阈值、逐个 agent 开关；已安装的 agent 默认开启监控
-7. **支持 Pi**（pi coding agent）以及 Claude Code / Codex / Cursor / Gemini CLI / Aider / Copilot CLI / Ollama / LM Studio / Xcode Build / ffmpeg / Docker
+## 配置
 
-**配置**：`~/Library/Application Support/HotPot/rules.json`（首次启动生成）
-可加自己的 agent、白名单端口、改预警阈值。改坏了不会崩，会自动备份并回退默认。
+配置文件在 `~/Library/Application Support/HotPot/rules.json`，首次启动生成。
 
-**开机自启**：默认关闭。菜单栏图标右键 →「开机自启」开启。
-
-**还没做**：刘海形态（当前机器无刘海）、中英双语之外的语言、Intel Mac 支持。
-
-## 构建（开发）
-
-```bash
-swift build -c release
-.build/release/HotPot --dump
-```
-
-需要 macOS 13+，Apple Silicon。
-
-## 命令行自检
-
-```bash
-.build/debug/HotPot --dump        # 打印温度 + agent 会话 + Top CPU
-.build/debug/HotPot --cool-test   # 对最烫的 agent 降温 25s 再恢复，打印温度变化
-.build/debug/HotPot --render      # 离屏渲染面板（可加 --alert / --dev 注入状态）
-.build/release/HotPot --ports     # 只列残留的开发服务器
-.build/release/HotPot --bench     # 扫描/读温耗时基线
-.build/debug/HotPot --demo        # 启动后自动展开面板
-```
+可以加自己的 agent、白名单端口、改预警阈值。**改坏了不会崩** —— 会自动备份原文件并回退默认规则。
 
 ## 原理
 
@@ -96,31 +83,51 @@ swift build -c release
 | 归因 | argv 指纹 + ppid 链 + pgid 兜底 |
 | 降温 | `taskpolicy -b -p PID` 降到 Background QoS（只跑能效核） |
 | 恢复 | `taskpolicy -B -p PID` |
+| 存储 | SQLite 本地采样，原始 48 小时、小时聚合 90 天 |
+
+看板的采样策略和取舍记录在 [docs/DASHBOARD.md](docs/DASHBOARD.md)。
 
 ## 已知限制
 
 - 用了私有 API，不能上 Mac App Store
 - 只能降温同用户的进程（sudo 起的 docker / root 进程不行）
 - 刘海形态需要带刘海的机器验证；无刘海时自动用菜单栏
-
-## 隐私
-
-纯本地运行，不联网，不上报任何数据。
+- 目前只支持 Apple Silicon / macOS 13+
 
 ## 开发
 
 ```bash
-./scripts/check.sh    # 编译 + 单测 + e2e，提交前跑这个
+./scripts/check.sh      # 编译 + 单测 + e2e，提交前跑这个
+swift build -c release  # 出可执行文件
 ```
 
-- `Tests/HotPotTests/` — agent 识别规则、会话聚合、看板存储（`swift test`）
-- `HotPot --e2e` — 无窗口、无辅助功能权限的自检：进程扫描、会话聚合、SQLite 读写、三个视图能不能建出来
-- `.github/workflows/ci.yml` — push 和 PR 跑同样三步
+测试：`Tests/HotPotTests/` 覆盖 agent 识别规则、会话聚合、看板存储；`HotPot --e2e` 是无窗口无权限的启动链路自检。CI 跑同样的三步。
+
+常用命令行工具：
+
+```bash
+.build/debug/HotPot --dump        # 打印温度 + agent 会话 + Top CPU
+.build/debug/HotPot --cool-test   # 对最烫的 agent 降温 25s 再恢复，打印温度变化
+.build/debug/HotPot --render      # 离屏渲染面板（可加 --alert / --dev 注入状态）
+.build/release/HotPot --ports     # 只列残留的开发服务器
+.build/release/HotPot --bench     # 扫描/读温耗时基线
+.build/debug/HotPot --demo        # 启动后自动展开面板
+```
+
+更多文档：
+
+- 需求与设计：[PRD.md](PRD.md)
+- 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
+- 给协作者 / AI agent 的说明：[AGENTS.md](AGENTS.md)
+
+## 隐私
+
+纯本地运行。不联网、不上报、不需要账号。看板数据只写在你自己的硬盘上。
 
 ## License
 
-MIT
+[MIT](LICENSE) © luogao
 
 ---
 
-灵感来自 [WhoIsCooking](https://whoiscooking.site)，独立实现。
+灵感来自 [WhoIsCooking](https://whoiscooking.site/)，独立实现。
