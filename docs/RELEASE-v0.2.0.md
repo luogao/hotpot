@@ -13,7 +13,9 @@
 ## 安装
 
 ```bash
-brew install --cask https://raw.githubusercontent.com/luogao/hotpot/main/Casks/hotpot.rb
+brew tap luogao/tap
+brew trust luogao/tap
+brew install --cask hotpot
 ```
 
 或手动：
