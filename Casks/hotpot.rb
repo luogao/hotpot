@@ -2,13 +2,12 @@ cask "hotpot" do
   version "0.2.0"
   sha256 "4fffff99889a231af9522596e3d2124c807ef919147c24e952ab52c0acfbb021"
 
-  url "https://github.com/luogao/hotpot/releases/download/v#{version}/HotPot-#{version}.zip",
-      verified: "github.com/luogao/hotpot/"
+  url "https://github.com/luogao/hotpot/releases/download/v#{version}/HotPot-#{version}.zip"
   name "HotPot"
   desc "See which AI agent is cooking your Mac, and cool it down"
   homepage "https://github.com/luogao/hotpot"
 
-  depends_on macos: ">= :ventura"
+  depends_on macos: :ventura
   depends_on arch: :arm64
 
   app "HotPot.app"

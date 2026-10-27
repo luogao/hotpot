@@ -30,7 +30,7 @@ struct PanelView: View {
             if !model.devServices.isEmpty { devServicesBar }
             footer
         }
-        .padding(EdgeInsets(top: 18, leading: 18, bottom: 16, trailing: 18))
+        .padding(EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 18))
         .frame(width: 340)
         .frame(minHeight: 380)
         .background(Theme.bg)
@@ -64,31 +64,34 @@ struct PanelView: View {
 
     private var readout: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 5) {
+            // baseline 对齐：数字和 °C 坐同一条基线，比 top 对齐靠 padding 凑更准
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(model.temperature > 0 ? "\(Int(model.temperature.rounded()))" : "—")
                     .font(.system(size: 72, weight: .medium, design: .monospaced))
                     .tracking(-3.6)
                     .foregroundStyle(isDanger ? Theme.danger : Theme.ink)
-                    .frame(height: 62, alignment: .top)
+                    .lineLimit(1)
+                    .fixedSize()
                 Text("°C")
                     .font(.system(size: 19, design: .monospaced))
                     .foregroundStyle(isDanger ? Theme.danger.opacity(0.7) : Theme.ink2)
-                    .padding(.top, 7)
             }
+            // monospaced 数字行高约 1.2 倍字号，上下各留 ~12pt 空白，这里收掉下行空白
+            .padding(.bottom, -4)
 
             Text(L10n.t("最热传感器", "hottest sensor") + " · " + (model.sensorName.isEmpty ? "—" : model.sensorName))
                 .font(.system(size: 10, design: .monospaced))
                 .tracking(0.2)
                 .foregroundStyle(Theme.ink2)
                 .lineLimit(1)
-                .padding(.top, 7)
+                .padding(.top, 5)
 
             ScaleBar(celsius: model.temperature, color: accent)
-                .padding(.top, 14)
+                .padding(.top, 11)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 14)
-        .padding(.bottom, 14)
+        .padding(.top, 2)
+        .padding(.bottom, 16)
         .padding(.horizontal, 2)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.line).frame(height: 1)
@@ -159,7 +162,7 @@ struct PanelView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
-        .padding(.top, 10)
+        .padding(.top, 14)
         .alert(L10n.t("关闭 \(model.devServices.count) 个开发服务？", "Kill \(model.devServices.count) dev services?"), isPresented: $confirmingKill) {
             Button(L10n.t("关闭进程", "Kill processes"), role: .destructive) { model.killDevServices() }
             Button(L10n.t("取消", "Cancel"), role: .cancel) {}
@@ -187,7 +190,7 @@ struct PanelView: View {
             .buttonStyle(.plain)
             .help(L10n.t("退出 HotPot", "Quit HotPot"))
         }
-        .padding(.top, 12)
+        .padding(.top, 14)
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.line).frame(height: 1)
         }
@@ -286,7 +289,7 @@ struct SessionRow: View {
             .disabled(session.hasOtherUid)
             .help(session.hasOtherUid ? L10n.t("root 进程无法降温", "root process cannot be cooled") : (cooled ? L10n.t("恢复全速", "Restore full speed") : L10n.t("降到能效核，不中断任务", "Move to efficiency cores, keep running")))
         }
-        .frame(height: 60)
+        .frame(height: 56)
         // 预警用左侧竖条标记，不用整块底色：底块会读成「卡片」，和面板的无卡片语言冲突
         .overlay(alignment: .leading) {
             if alerting {
