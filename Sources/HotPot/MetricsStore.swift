@@ -11,8 +11,22 @@ final class MetricsStore {
     private let queue = DispatchQueue(label: "hotpot.metrics", qos: .utility)
     private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-    var dbPath: String {
-        // 测试/截图用临时库，别污染真实数据
+    var dbPath: String { path }
+
+    private let path: String
+
+    private init() {
+        path = Self.defaultPath()
+        queue.sync { open() }
+    }
+
+    /// 测试用：独立数据库文件
+    init(path: String) {
+        self.path = path
+        queue.sync { open() }
+    }
+
+    private static func defaultPath() -> String {
         if let override = ProcessInfo.processInfo.environment["HOTPOT_METRICS_DB"] { return override }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir = base.appendingPathComponent(AppInfo.appSupportDir)
@@ -20,14 +34,10 @@ final class MetricsStore {
         return dir.appendingPathComponent("metrics.sqlite").path
     }
 
-    private init() {
-        queue.sync { open() }
-    }
-
     // MARK: - 打开 / 建表
 
     private func open() {
-        guard sqlite3_open(dbPath, &db) == SQLITE_OK else {
+        guard sqlite3_open(path, &db) == SQLITE_OK else {
             db = nil
             return
         }
@@ -253,6 +263,9 @@ final class MetricsStore {
             _ = db
         }
     }
+
+    /// 等队列里排着的写入落盘（测试 / 退出前用）
+    func flush() { queue.sync {} }
 
     func clearAll() {
         queue.async { [weak self] in

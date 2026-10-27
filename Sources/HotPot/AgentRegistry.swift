@@ -34,7 +34,8 @@ enum AgentRegistry {
         d.detect.contains { FileManager.default.fileExists(atPath: $0) }
     }
 
-    static func match(_ p: ProcInfo) -> AgentDef? {
+    static func match(_ p: ProcInfo, rules: [AgentDef]? = nil) -> AgentDef? {
+        let pool = rules ?? all
         let base = (p.path as NSString).lastPathComponent.lowercased()
         let args = p.args.lowercased()
 
@@ -46,8 +47,11 @@ enum AgentRegistry {
         if base.contains("code helper") || args.contains("visual studio code.app") { return nil }
 
         let hay = base + " " + args
-        for d in all {
-            if d.excludes.contains(where: { hay.contains($0.lowercased()) }) { continue }
+        // 排除规则要看完整路径：Claude 桌面端的 app 包名只在 path 里，
+        // base 是 "Claude"、args 为空，只看 base+args 会漏排
+        let fullHay = p.path.lowercased() + " " + args
+        for d in pool {
+            if d.excludes.contains(where: { fullHay.contains($0.lowercased()) }) { continue }
             // 精确名优先：pi 是 node CLI，真正的进程是 node，靠 args 里的脚本路径认。
             // 逐个 token 比 basename，避免 "/bin/pi" 的子串误伤 "/bin/ping"。
             if let bin = d.bin?.lowercased() {
@@ -82,13 +86,13 @@ struct AgentSession {
 enum SessionAggregator {
 
     /// 把进程表压成「一个 agent 会话一行」
-    static func build(from procs: [ProcInfo]) -> [AgentSession] {
+    static func build(from procs: [ProcInfo], rules: [AgentDef]? = nil) -> [AgentSession] {
         let byPid = Dictionary(uniqueKeysWithValues: procs.map { ($0.pid, $0) })
 
         // 1) 找出所有命中规则的进程
         var matched: [pid_t: AgentDef] = [:]
         for p in procs {
-            if let d = AgentRegistry.match(p) { matched[p.pid] = d }
+            if let d = AgentRegistry.match(p, rules: rules) { matched[p.pid] = d }
         }
         guard !matched.isEmpty else { return [] }
 

@@ -68,6 +68,13 @@ if argv.contains("--cool-test") {
     exit(0)
 }
 
+if argv.contains("--e2e") {
+    // 需要 NSApplication 才能建 NSHostingView
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    exit(E2E.run())
+}
+
 if argv.contains("--seed-metrics") {
     // 造 24 小时假数据，给截图/验证用（配合 HOTPOT_METRICS_DB 指向临时库）
     let store = MetricsStore.shared

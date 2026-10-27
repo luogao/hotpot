@@ -13,7 +13,10 @@ let package = Package(
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("IOKit"),
                 .linkedLibrary("sqlite3"),
-            ]
+            ]),
+        .testTarget(
+            name: "HotPotTests",
+            dependencies: ["HotPot"]
         )
     ]
 )

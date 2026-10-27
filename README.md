@@ -106,6 +106,16 @@ swift build -c release
 
 纯本地运行，不联网，不上报任何数据。
 
+## 开发
+
+```bash
+./scripts/check.sh    # 编译 + 单测 + e2e，提交前跑这个
+```
+
+- `Tests/HotPotTests/` — agent 识别规则、会话聚合、看板存储（`swift test`）
+- `HotPot --e2e` — 无窗口、无辅助功能权限的自检：进程扫描、会话聚合、SQLite 读写、三个视图能不能建出来
+- `.github/workflows/ci.yml` — push 和 PR 跑同样三步
+
 ## License
 
 MIT
