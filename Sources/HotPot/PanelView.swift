@@ -195,11 +195,18 @@ struct PanelView: View {
                 }
                 .overlay(alignment: .bottom) {
                     if hasMoreBelow {
-                        LinearGradient(colors: [Theme.bg.opacity(0), Theme.bg.opacity(0.92), Theme.bg],
-                                       startPoint: .top, endPoint: .bottom)
-                            .frame(height: 34)
-                            .allowsHitTesting(false)
-                            .transition(.opacity)
+                        // 半透明 veil：内容被压暗但仍看得出轮廓，比直接擦成底色更像「下面还有」
+                        VStack(spacing: 0) {
+                            LinearGradient(colors: [Theme.bg.opacity(0), Theme.bg.opacity(0.88)],
+                                           startPoint: .top, endPoint: .bottom)
+                                .frame(height: 22)
+                            Rectangle()
+                                .fill(Theme.bg.opacity(0.88))
+                                .frame(height: 14)
+                        }
+                        .frame(height: 36)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
                     }
                 }
             }

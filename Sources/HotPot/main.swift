@@ -118,7 +118,14 @@ if argv.contains("--render") {
             host.frame = NSRect(x: 0, y: 0, width: 340, height: 580)
             host.appearance = NSAppearance(named: .darkAqua)
             host.layoutSubtreeIfNeeded()
-            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            let scale: CGFloat = 2
+            if let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: Int(host.bounds.width * scale),
+                pixelsHigh: Int(host.bounds.height * scale),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) {
+                rep.size = host.bounds.size
                 host.cacheDisplay(in: host.bounds, to: rep)
                 if let png = rep.representation(using: .png, properties: [:]) {
                     try? png.write(to: URL(fileURLWithPath: out))

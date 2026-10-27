@@ -2,13 +2,22 @@ import AppKit
 import SwiftUI
 import ServiceManagement
 
+/// 无箭头面板：NSPopover 会画一个指向菜单栏的三角箭头，且无法关掉。
+/// 换成 borderless NSPanel，自己画圆角（PanelView 自带），外面只留阴影。
+final class PanelWindow: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
-    private let popover = NSPopover()
+    private var panel: PanelWindow?
     private let model = AppModel()
     private let settings = SettingsWindowController()
     private var titleTimer: Timer?
+    private var outsideMonitor: Any?
+    private var localMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.start()
@@ -23,11 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             btn.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        popover.contentViewController = NSHostingController(rootView: PanelView(model: model))
-        popover.behavior = .transient
-        popover.delegate = self
-        popover.animates = false
-
         NotificationCenter.default.addObserver(forName: .hotPotOpenSettings, object: nil, queue: .main) { [weak self] _ in
             self?.openSettings()
         }
@@ -40,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // POC 用：启动后自动展开面板，方便截图/验收
         if CommandLine.arguments.contains("--demo") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-                self?.togglePopover()
+                self?.togglePanel()
             }
         }
     }
@@ -76,15 +80,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if isRight {
             showMenu()
         } else {
-            togglePopover()
+            togglePanel()
         }
     }
 
     private func showMenu() {
+        closePanel()
         guard let btn = statusItem.button else { return }
         let menu = NSMenu()
         menu.addItem(withTitle: L10n.t("打开面板", "Open panel"),
-                     action: #selector(togglePopover), keyEquivalent: "").target = self
+                     action: #selector(togglePanel), keyEquivalent: "").target = self
         menu.addItem(.separator())
 
         let login = NSMenuItem(title: L10n.t("开机自启", "Launch at login"),
@@ -121,7 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func quit() { NSApp.terminate(nil) }
 
     @objc private func openSettings() {
-        if popover.isShown { popover.performClose(nil) }
+        closePanel()
         settings.show()
     }
 
@@ -153,25 +158,87 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func togglePopover() {
-        guard let btn = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
-            return
-        }
-        // NSPopover 先按当前 contentSize 定位，SwiftUI 在 show 之后才完成布局。
-        // 内容比预估高时窗口会向上生长，直接盖住菜单栏。先把布局跑完、尺寸定死。
-        if let vc = popover.contentViewController {
-            vc.view.layoutSubtreeIfNeeded()
-            let fit = vc.view.fittingSize
-            if fit.height > 0, fit.width > 0 { popover.contentSize = fit }
-        }
-        popover.show(relativeTo: btn.bounds, of: btn, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
-    }
-}
+    // MARK: - 面板（NSPanel，无箭头）
 
-extension AppDelegate: NSPopoverDelegate {
-    func popoverDidShow(_ notification: Notification) { model.panelOpen = true }
-    func popoverDidClose(_ notification: Notification) { model.panelOpen = false }
+    @objc private func togglePanel() {
+        if let w = panel, w.isVisible {
+            closePanel()
+        } else {
+            showPanel()
+        }
+    }
+
+    private func showPanel() {
+        guard let btn = statusItem.button, let btnWindow = btn.window else { return }
+
+        let size = NSSize(width: 340, height: 580)
+        let w = PanelWindow(contentRect: NSRect(origin: .zero, size: size),
+                            styleMask: [.borderless, .nonactivatingPanel],
+                            backing: .buffered, defer: false)
+        let host = NSHostingController(rootView: PanelView(model: model))
+        // NSHostingController 的 preferredContentSize 是 0，会把窗口压成 0×0，必须显式给尺寸
+        host.preferredContentSize = size
+        w.contentViewController = host
+        w.setContentSize(size)
+        w.isOpaque = false
+        w.backgroundColor = .clear
+        w.hasShadow = true
+        w.level = .statusBar
+        w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        w.isMovable = false
+        w.hidesOnDeactivate = false
+
+        // 贴在图标正下方，左右钳进屏幕可见区
+        let btnOnScreen = btnWindow.convertToScreen(btn.convert(btn.bounds, to: nil))
+        let screen = btnWindow.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? .zero
+        var x = btnOnScreen.midX - size.width / 2
+        x = max(visible.minX + 8, min(x, visible.maxX - size.width - 8))
+        var y = btnOnScreen.minY - size.height - 6
+        if y < visible.minY + 8 { y = visible.minY + 8 }
+        w.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+
+        w.makeKeyAndOrderFront(nil)
+        if CommandLine.arguments.contains("--diagnose") {
+            FileHandle.standardError.write(Data("[panel] frame=\(w.frame) visible=\(w.isVisible) btn=\(btnOnScreen) screen=\(visible)\n".utf8))
+        }
+        panel = w
+        model.panelOpen = true
+        installDismissMonitors()
+    }
+
+    private func closePanel() {
+        guard panel != nil else { return }
+        panel?.orderOut(nil)
+        panel = nil
+        model.panelOpen = false
+        removeDismissMonitors()
+    }
+
+    /// 点面板以外的地方、或按 Esc 就收起来（相当于 popover 的 .transient）
+    private func installDismissMonitors() {
+        outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard let self else { return }
+            // 点在状态栏图标上交给 statusItemClicked 处理，这里不抢
+            if let btn = self.statusItem.button, let bw = btn.window {
+                let r = bw.convertToScreen(btn.convert(btn.bounds, to: nil))
+                if r.contains(NSEvent.mouseLocation) { return }
+            }
+            self.closePanel()
+        }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] e in
+            guard let self, let w = self.panel else { return e }
+            if e.type == .keyDown {
+                if e.keyCode == 53 { self.closePanel(); return nil }   // Esc
+                return e
+            }
+            if e.window !== w { self.closePanel() }
+            return e
+        }
+    }
+
+    private func removeDismissMonitors() {
+        if let m = outsideMonitor { NSEvent.removeMonitor(m); outsideMonitor = nil }
+        if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
+    }
 }
