@@ -16,7 +16,19 @@ M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / �
 - 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
 - 给协作者/AI agent 的说明：AGENTS.md
 
-## 安装（自己用）
+## 安装
+
+**Homebrew（推荐）**
+
+```bash
+brew install --cask https://raw.githubusercontent.com/luogao/hotpot/main/Casks/hotpot.rb
+```
+
+**下载发行版**
+
+到 [Releases](https://github.com/luogao/hotpot/releases) 下 `HotPot-<version>.zip`，解压后拖进 `/Applications`。
+
+**从源码**
 
 ```bash
 git clone https://github.com/luogao/hotpot.git
@@ -42,7 +54,12 @@ xattr -d com.apple.quarantine /Applications/HotPot.app
 4. **连续满载预警**：某个会话连续 5 分钟超过 200% CPU，行内标红并显示已持续多久（面板内提示，不弹系统通知）
 5. **残留 dev server**：终端关了但 `npm run dev` 还在占端口，面板底部列出端口，可一键关闭
 
-**还没做**：刘海形态（当前机器无刘海）、开机自启、规则表外置 JSON。
+**配置**：`~/Library/Application Support/HotPot/rules.json`（首次启动生成）
+可加自己的 agent、白名单端口、改预警阈值。改坏了不会崩，会自动备份并回退默认。
+
+**开机自启**：默认关闭。菜单栏图标右键 →「开机自启」开启。
+
+**还没做**：刘海形态（当前机器无刘海）、中英双语之外的语言、Intel Mac 支持。
 
 ## 构建（开发）
 
