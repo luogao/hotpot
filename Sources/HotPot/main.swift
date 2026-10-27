@@ -11,6 +11,28 @@ if argv.contains("--dump") {
     exit(0)
 }
 
+if argv.contains("--late-test") {
+    // 自检：补降 —— 降温后 agent 又起了新子进程，看它是否被自动纳入
+    let model = AppModel()
+    model.loadSync()
+    // 只动测试用的 pi 会话，别把用户正在跑的 agent 降级
+    for sess in model.sessions where sess.def.id == "pi" {
+        model.cooled.formUnion(Cooler.cool(pids: sess.pids))
+    }
+    Thread.sleep(forTimeInterval: 0.8)
+    print("[late] 首轮 cooled=\(model.cooled.count) sessions=\(model.sessions.map { "\($0.def.id):\($0.pids.count)" })")
+    for i in 1...6 {
+        Thread.sleep(forTimeInterval: 1.5)
+        model.loadSync()
+        model.coolLatecomers(model.sessions)
+        Thread.sleep(forTimeInterval: 0.7)
+        print("[late] 第\(i)轮 cooled=\(model.cooled.count) sessions=\(model.sessions.map { "\($0.def.id):\($0.pids.count)" })")
+    }
+    model.restoreAll()
+    print("[late] 已恢复")
+    exit(0)
+}
+
 if argv.contains("--cool-test") {
     // 自检：把 CPU 最高的 agent 会话整体降温，观察 CPU/温度变化，再恢复
     let scanner = ProcessScanner()

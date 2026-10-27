@@ -54,7 +54,8 @@ final class AppModel: ObservableObject {
         tickCount += 1
         // 温度 ~25ms，扫描 ~13ms，lsof ~30ms。各自降频，避免三个功能各扫一遍拖垮预算。
         let needTemp = (tickCount % 3 == 1)          // 6 秒
-        let needScan = panelOpen || (tickCount % 5 == 1)  // 面板开 2 秒 / 关 10 秒
+        // 有会话处于降温状态时 6 秒扫一次（要抓 agent 新起的进程），否则关面板 10 秒
+        let needScan = panelOpen || (!cooled.isEmpty && tickCount % 3 == 1) || (tickCount % 5 == 1)
         let needPorts = (tickCount % 30 == 1)        // 60 秒
         guard needTemp || needScan || needPorts else { return }
         queue.async { [weak self] in
@@ -84,10 +85,35 @@ final class AppModel: ObservableObject {
                 self.sessions = sessions
                 if let nextAlerts { self.alerts = nextAlerts }
                 if needPorts { self.devServices = ports }
-                // 清掉已退出进程的降温标记
-                let alive = Set(procs.map(\.pid))
-                if needScan { self.cooled.formIntersection(alive) }
+
+                if needScan {
+                    // 清掉已退出进程的降温标记
+                    let alive = Set(procs.map(\.pid))
+                    self.cooled.formIntersection(alive)
+
+                    self.coolLatecomers(sessions)
+                }
                 self.lastError = self.temp == nil ? "温度传感器不可用" : nil
+            }
+        }
+    }
+
+    /// 已降温的会话：这轮新冒出来的子进程也补降。
+    /// agent 每起一次 build / ffmpeg 都是一个新 pid，不补的话得手动再点一次。
+    /// 必须在主线程调用（读 cooled）。
+    func coolLatecomers(_ sessions: [AgentSession]) {
+        var late: [pid_t] = []
+        for s in sessions where s.pids.contains(where: { cooled.contains($0) }) {
+            late.append(contentsOf: s.pids.filter { !cooled.contains($0) })
+        }
+        guard !late.isEmpty else { return }
+        cooled.formUnion(late)   // 先占位，避免下一轮重复 fork
+        queue.async { [weak self] in
+            guard let self else { return }
+            let ok = Set(Cooler.cool(pids: late))
+            let failed = late.filter { !ok.contains($0) }
+            if !failed.isEmpty {
+                DispatchQueue.main.async { self.cooled.subtract(failed) }
             }
         }
     }
