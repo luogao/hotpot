@@ -4,11 +4,11 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Platform](https://img.shields.io/badge/macOS-13%2B%20Apple%20Silicon-black)](#安装)
 
-**谁在烧我的 Mac？**
+**火大了就关小，而不是把锅端下来。**
 
-跑几个 AI agent，风扇就开始转。想知道是哪个在烤机器、已经烤了多久、能不能让它凉快一点 —— Activity Monitor 只会甩给你一堆 `node` 和 `claude`。
+几个 AI agent 一起跑，风扇开始起飞。你其实不需要知道「谁在占用 CPU」这种含糊答案 —— 你需要知道是哪个窗口、跑了多久、还能不能救。
 
-HotPot 住在菜单栏，告诉你哪个 agent 正在满载、把它的整棵进程树合成一行，然后可以把它挪到能效核降温 —— **不中断，不杀进程**。
+HotPot 住在菜单栏，把每个 agent 的整棵进程树合成一行，标清楚烫了多久，然后把它挪到能效核：**任务照跑，只是不抢满所有核心**。
 
 <p align="center">
   <img src="docs/ui/panel-v3.png" height="440" alt="菜单栏面板">&nbsp;&nbsp;&nbsp;
@@ -24,7 +24,7 @@ HotPot 住在菜单栏，告诉你哪个 agent 正在满载、把它的整棵进
 - **一键降温** — 把会话降到能效核，进程继续跑，只是慢一点；随时恢复
 - **连续满载预警** — 某个会话连续 5 分钟超 200% CPU，行内标红并显示持续时长
 - **端口监控** — 谁占着 `:5173`；终端关了进程还在的标「残留」，可一键关掉
-- **资源看板** — 1h/24h/7d/30d 窗口，看谁累计烧的 CPU 最多、温度什么时候飙起来的
+- **资源看板** — 1h/24h/7d/30d 窗口，看谁累计吃掉最多 CPU、温度什么时候飙起来的
 - **广泛的 agent 支持** — Claude Code / Codex / Cursor / Gemini CLI / Aider / Copilot CLI / Pi / Ollama / LM Studio / Xcode Build / ffmpeg / Docker
 
 ## 安装
