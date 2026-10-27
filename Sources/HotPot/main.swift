@@ -74,7 +74,7 @@ if argv.contains("--render") {
     let renderSettings = argv.contains("--settings")
     MainActor.assumeIsolated {
         let view = renderSettings
-            ? AnyView(SettingsView(onClose: {}, scrollable: false))
+            ? AnyView(SettingsView(onClose: {}))
             : AnyView(PanelView(model: model))
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2

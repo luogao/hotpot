@@ -2,206 +2,185 @@ import SwiftUI
 import AppKit
 import ServiceManagement
 
-/// 轻量设置页：只放「开关类」和「阈值类」配置，复杂结构仍交给 rules.json。
-/// 保存后重启进程生效 —— 规则在启动时读一次，热重载会让归因结果在两次扫描间跳变。
+/// C 方案「三栏参数台」：左栏导航 + 右侧参数区，深色，和主面板同源。
+/// 尺寸取自设计稿：窗口 580 × 684（内容区），左栏 132，主区 padding 18/20/16，section 间距 20。
+/// 控件全部自绘（PillToggle / StepButton）—— 系统 Toggle/Slider 在离屏渲染里画不出来，
+/// 而且胶囊开关和刻度条才是这个产品该有的语言。
 struct SettingsView: View {
     @State private var rules: Rules
     @State private var launchAtLogin: Bool
     @State private var dirty = false
 
     private let onClose: () -> Void
-    /// 离屏渲染时 ImageRenderer 画不出 ScrollView 的内容，出图用 false
-    private let scrollable: Bool
 
-    init(onClose: @escaping () -> Void, scrollable: Bool = true) {
+    init(onClose: @escaping () -> Void) {
         _rules = State(initialValue: Rules.shared)
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
         self.onClose = onClose
-        self.scrollable = scrollable
     }
 
     var body: some View {
+        HStack(spacing: 0) {
+            rail
+            main
+        }
+        .frame(width: 580, height: 684)
+        .background(Theme.bg)
+    }
+
+    // MARK: - 左栏
+
+    private var rail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider().opacity(0.3)
-            Group {
-                if scrollable {
-                    ScrollView { sections }
-                } else {
-                    sections
-                }
-            }
-            .frame(maxHeight: scrollable ? 520 : nil)
-            Divider().opacity(0.3)
-            footer
-        }
-        .frame(width: 440)
-        .frame(height: scrollable ? 620 : nil)
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
+            Text("HOTPOT")
+                .font(.system(size: 9, design: .monospaced))
+                .tracking(1.4)
+                .foregroundStyle(Theme.ink3.opacity(0.75))
             Text(L10n.t("设置", "Settings"))
-                .font(.system(size: 15, weight: .semibold))
-            Spacer()
-            Text("HotPot " + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.ink2)
+                .padding(.top, 3)
+
+            VStack(spacing: 0) {
+                RailItem(n: "01", label: L10n.t("通用", "General"), count: "1")
+                RailItem(n: "02", label: L10n.t("预警", "Alerts"), count: "2")
+                RailItem(n: "03", label: "Agent", count: "\(rules.agents.count)", isLast: true)
+            }
+            .padding(.top, 18)
+
+            Spacer(minLength: 0)
+
+            VStack(alignment: .leading, spacing: 8) {
+                RailLink(title: L10n.t("打开规则文件", "Open rules file")) {
+                    NSWorkspace.shared.open(Rules.path)
+                }
+                RailLink(title: L10n.t("恢复默认", "Reset defaults")) {
+                    rules = .default
+                    dirty = true
+                }
+                Button {
+                    save()
+                } label: {
+                    Text(dirty ? L10n.t("保存并重启", "Save & restart") : L10n.t("保存", "Save"))
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(Color(red: 21/255, green: 14/255, blue: 4/255))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 28)
+                        .background(RoundedRectangle(cornerRadius: 3).fill(Theme.accent))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(EdgeInsets(top: 14, leading: 12, bottom: 14, trailing: 12))
+        .frame(width: 132, alignment: .leading)
+        .overlay(alignment: .trailing) {
+            Rectangle().fill(Color.white.opacity(0.14)).frame(width: 1)
+        }
     }
 
-    private var sections: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            general
+    // MARK: - 右侧
+
+    private var main: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            generalSection
             alertSection
             agentsSection
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(EdgeInsets(top: 18, leading: 20, bottom: 16, trailing: 20))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    // MARK: 通用
-
-    private var general: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionLabel(L10n.t("通用", "General"))
-            Toggle(isOn: $launchAtLogin) {
+    private var generalSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHead(n: "01", title: L10n.t("通用", "General"))
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(L10n.t("开机自启", "Launch at login"))
-                        .font(.system(size: 12.5))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.ink)
                     Text(L10n.t("登录后自动驻留菜单栏", "Stay in the menu bar after login"))
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.ink2)
                 }
+                Spacer(minLength: 0)
+                PillToggle(on: Binding(
+                    get: { launchAtLogin },
+                    set: { applyLaunchAtLogin($0) }
+                ))
             }
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .onChange(of: launchAtLogin) { newValue in
-                applyLaunchAtLogin(newValue)
+            .frame(height: 50)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
             }
         }
     }
-
-    // MARK: 预警阈值
 
     private var alertSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionLabel(L10n.t("异常预警", "Alerts"))
-            Text(L10n.t("某个 agent 持续超过阈值时，面板顶部会标红并显示已持续多久。",
-                        "When an agent stays above the threshold, the panel flags it and shows how long."))
-                .font(.system(size: 10.5))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHead(n: "02", title: L10n.t("异常预警", "Alerts"))
+            Text(L10n.t("agent 持续超过阈值时，顶部标红并显示已持续多久。",
+                        "When an agent stays above the threshold, the panel flags it."))
+                .font(.system(size: 10))
+                .foregroundStyle(Theme.ink2)
+                .frame(height: 20, alignment: .top)
+                .padding(.top, 4)
 
-            sliderRow(title: L10n.t("CPU 阈值", "CPU threshold"),
-                      value: Binding(
-                        get: { rules.alert.cpuPercent },
-                        set: { rules.alert.cpuPercent = $0; dirty = true }
-                      ),
-                      range: 100...800, step: 50,
-                      display: "\(Int(rules.alert.cpuPercent))%")
+            StepperRow(label: L10n.t("CPU 阈值", "CPU threshold"),
+                       value: "\(Int(rules.alert.cpuPercent))",
+                       unit: "%",
+                       dec: { rules.alert.cpuPercent = max(100, rules.alert.cpuPercent - 50); dirty = true },
+                       inc: { rules.alert.cpuPercent = min(800, rules.alert.cpuPercent + 50); dirty = true })
 
-            sliderRow(title: L10n.t("持续时长", "Sustained for"),
-                      value: Binding(
-                        get: { rules.alert.sustainSeconds / 60 },
-                        set: { rules.alert.sustainSeconds = ($0).rounded() * 60; dirty = true }
-                      ),
-                      range: 1...15, step: 1,
-                      display: L10n.t("\(Int(rules.alert.sustainSeconds / 60)) 分钟",
-                                      "\(Int(rules.alert.sustainSeconds / 60)) min"))
+            StepperRow(label: L10n.t("持续时长", "Sustained for"),
+                       value: "\(Int(rules.alert.sustainSeconds / 60))",
+                       unit: L10n.t("分钟", "min"),
+                       dec: { rules.alert.sustainSeconds = max(60, rules.alert.sustainSeconds - 60); dirty = true },
+                       inc: { rules.alert.sustainSeconds = min(900, rules.alert.sustainSeconds + 60); dirty = true })
         }
     }
-
-    private func sliderRow(title: String, value: Binding<Double>,
-                           range: ClosedRange<Double>, step: Double, display: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title).font(.system(size: 12))
-                Spacer()
-                Text(display)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            }
-            Slider(value: value, in: range, step: step)
-                .controlSize(.small)
-        }
-    }
-
-    // MARK: Agent 开关
 
     private var agentsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(L10n.t("识别的 Agent", "Detected agents"))
-            Text(L10n.t("关掉的不会被统计，也不会出现在面板里。",
-                        "Disabled ones are ignored and hidden from the panel."))
-                .font(.system(size: 10.5))
-                .foregroundStyle(.secondary)
-
-            ForEach($rules.agents, id: \.id) { $agent in
-                HStack(spacing: 9) {
-                    Image(systemName: agent.symbol ?? "circle.dashed")
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 15)
-                    Text(agent.name).font(.system(size: 11.5))
-                    Spacer()
-                    Toggle("", isOn: Binding(
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHead(n: "03", title: L10n.t("识别的 Agent", "Detected agents"),
+                        trailing: "\(rules.agents.count)")
+            ForEach(Array($rules.agents.enumerated()), id: \.offset) { idx, $agent in
+                HStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: agent.symbol ?? "circle.dashed")
+                            .font(.system(size: 11))
+                            .foregroundStyle((agent.enabled ?? true) ? Theme.ink3 : Theme.ink2)
+                            .frame(width: 14)
+                        Text(agent.name)
+                            .font(.system(size: 11))
+                            .foregroundStyle((agent.enabled ?? true) ? Theme.ink : Theme.ink2)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Text((agent.enabled ?? true) ? "ON" : "OFF")
+                        .font(.system(size: 9, design: .monospaced))
+                        .tracking(0.5)
+                        .foregroundStyle((agent.enabled ?? true) ? Theme.ink3 : Theme.ink2)
+                        .frame(width: 44, alignment: .trailing)
+                    PillToggle(on: Binding(
                         get: { agent.enabled ?? true },
                         set: { agent.enabled = $0; dirty = true }
                     ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
                 }
-                .padding(.vertical, 0.5)
+                .frame(height: 30)
+                .overlay(alignment: .top) {
+                    if idx > 0 {
+                        Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    }
+                }
             }
         }
     }
 
-    // MARK: 底部
-
-    private var footer: some View {
-        HStack(spacing: 8) {
-            Button(L10n.t("打开规则文件", "Open rules file")) {
-                NSWorkspace.shared.open(Rules.path)
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 11))
-            .foregroundStyle(.tint)
-
-            Button(L10n.t("恢复默认", "Reset")) {
-                rules = .default
-                dirty = true
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 11))
-            .foregroundStyle(.tint)
-
-            Spacer()
-
-            if dirty {
-                Text(L10n.t("重启后生效", "Restart to apply"))
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
-            }
-            Button(L10n.t("保存并重启", "Save & restart")) {
-                save()
-            }
-            .keyboardShortcut(.defaultAction)
-            .controlSize(.small)
-        }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
-    }
-
-    // MARK: 动作
+    // MARK: - 动作
 
     private func save() {
+        guard dirty else { onClose(); return }
         Rules.shared = rules
         rules.save()
         relaunch()
@@ -209,13 +188,11 @@ struct SettingsView: View {
 
     private func applyLaunchAtLogin(_ enabled: Bool) {
         do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
+            if enabled { try SMAppService.mainApp.register() }
+            else { try SMAppService.mainApp.unregister() }
+            launchAtLogin = SMAppService.mainApp.status == .enabled
         } catch {
-            // 失败就回滚开关，别让界面显示一个不成立的状态
+            // 失败就回滚开关，别显示一个不成立的状态
             launchAtLogin = SMAppService.mainApp.status == .enabled
             let alert = NSAlert()
             alert.messageText = L10n.t("设置开机自启失败", "Could not change login item")
@@ -237,14 +214,163 @@ struct SettingsView: View {
     }
 }
 
-private struct SectionLabel: View {
-    let text: String
-    init(_ text: String) { self.text = text }
+// MARK: - 组件
+
+private struct RailItem: View {
+    let n: String
+    let label: String
+    let count: String
+    var isLast: Bool = false
+
     var body: some View {
-        Text(text.uppercased())
-            .font(.system(size: 9.5, weight: .semibold))
-            .tracking(0.8)
-            .foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            Text(n)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(Theme.accent)
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.ink3)
+            Spacer(minLength: 0)
+            Text(count)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(Theme.ink2)
+        }
+        .frame(height: 38)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+        }
+        .overlay(alignment: .bottom) {
+            if isLast {
+                Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+            }
+        }
+    }
+}
+
+private struct RailLink: View {
+    let title: String
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundStyle(hover ? Theme.ink : Theme.ink2)
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+    }
+}
+
+private struct SectionHead: View {
+    let n: String
+    let title: String
+    var trailing: String? = nil
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(n)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(Theme.accent)
+            Text(title)
+                .font(.system(size: 10))
+                .tracking(0.8)
+                .foregroundStyle(Theme.ink2)
+            Spacer(minLength: 0)
+            if let trailing {
+                Text(trailing)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Theme.ink2)
+            }
+        }
+        .frame(height: 18)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.white.opacity(0.16)).frame(height: 1)
+        }
+    }
+}
+
+private struct StepperRow: View {
+    let label: String
+    let value: String
+    let unit: String
+    let dec: () -> Void
+    let inc: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.ink3)
+            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 15, design: .monospaced))
+                    .foregroundStyle(Theme.accent)
+                Text(unit)
+                    .font(.system(size: 9))
+                    .foregroundStyle(Theme.ink2)
+            }
+            .frame(width: 72, alignment: .trailing)
+
+            HStack(spacing: 4) {
+                StepButton(symbol: "minus", action: dec)
+                StepButton(symbol: "plus", action: inc)
+            }
+            .frame(width: 56, alignment: .trailing)
+        }
+        .frame(height: 56)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
+        }
+    }
+}
+
+private struct StepButton: View {
+    let symbol: String
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(hover ? Theme.ink : Theme.ink2)
+                .frame(width: 22, height: 22)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(hover ? Theme.accent : Color.white.opacity(0.18), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+    }
+}
+
+/// 34×18 胶囊开关：ON 时琥珀描边 + 淡填充 + 圆钮右移
+struct PillToggle: View {
+    @Binding var on: Bool
+
+    var body: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.16)) { on.toggle() }
+        } label: {
+            Capsule()
+                .fill(on ? Theme.accent.opacity(0.16) : Color.clear)
+                .overlay(
+                    Capsule().stroke(on ? Theme.accent.opacity(0.55) : Color.white.opacity(0.18),
+                                     lineWidth: 1)
+                )
+                .overlay(alignment: on ? .trailing : .leading) {
+                    Circle()
+                        .fill(on ? Theme.accent : Color.white.opacity(0.35))
+                        .frame(width: 12, height: 12)
+                        .padding(2)
+                }
+                .frame(width: 34, height: 18)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -264,7 +390,11 @@ final class SettingsWindowController {
         }))
         let w = NSWindow(contentViewController: hosting)
         w.title = L10n.t("HotPot 设置", "HotPot Settings")
-        w.styleMask = [.titled, .closable]
+        w.styleMask = [.titled, .closable, .fullSizeContentView]
+        w.titlebarAppearsTransparent = true
+        w.titleVisibility = .hidden
+        w.appearance = NSAppearance(named: .darkAqua)
+        w.backgroundColor = NSColor(red: 12/255, green: 12/255, blue: 13/255, alpha: 1)
         w.isReleasedWhenClosed = false
         w.center()
         window = w
