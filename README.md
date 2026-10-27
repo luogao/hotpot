@@ -10,7 +10,7 @@
 
 ## 状态
 
-POC 已跑通：温度读取 / agent 归因 / 一键降温 / 菜单栏面板。
+M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / 连续满载预警 / 残留 dev server 提醒。
 
 - 需求与设计：[PRD.md](PRD.md)
 - 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
@@ -34,8 +34,15 @@ open /Applications/HotPot.app
 xattr -d com.apple.quarantine /Applications/HotPot.app
 ```
 
-**当前能力**：菜单栏温度、agent 会话归并、单个/全部降温与恢复。
-**还没做**：刘海形态、5 分钟异常提醒、残留 dev server 提醒、开机自启。
+**当前能力**
+
+1. 菜单栏实时芯片温度，按温度变色
+2. agent 会话归并：一个 agent 的 node/npm 子进程合成一行
+3. 单个 / 全部降温与恢复（`taskpolicy` 降到能效核，进程不中断）
+4. **连续满载预警**：某个会话连续 5 分钟超过 200% CPU，行内标红并显示已持续多久（面板内提示，不弹系统通知）
+5. **残留 dev server**：终端关了但 `npm run dev` 还在占端口，面板底部列出端口，可一键关闭
+
+**还没做**：刘海形态（当前机器无刘海）、开机自启、规则表外置 JSON。
 
 ## 构建（开发）
 
@@ -51,7 +58,9 @@ swift build -c release
 ```bash
 .build/debug/HotPot --dump        # 打印温度 + agent 会话 + Top CPU
 .build/debug/HotPot --cool-test   # 对最烫的 agent 降温 25s 再恢复，打印温度变化
-.build/debug/HotPot --render      # 离屏渲染面板到 poc-panel.png
+.build/debug/HotPot --render      # 离屏渲染面板（可加 --alert / --dev 注入状态）
+.build/release/HotPot --ports     # 只列残留的开发服务器
+.build/release/HotPot --bench     # 扫描/读温耗时基线
 .build/debug/HotPot --demo        # 启动后自动展开面板
 ```
 

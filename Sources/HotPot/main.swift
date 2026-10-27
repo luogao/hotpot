@@ -56,6 +56,16 @@ if argv.contains("--render") {
         if model.sensorName.isEmpty { model.sensorName = "PMU tdie8" }
     }
     if argv.contains("--empty") { model.sessions = [] }
+    if argv.contains("--alert"), let first = model.sessions.first {
+        model.alerts = [first.rootPid: 312]
+    }
+    if argv.contains("--dev") {
+        model.devServices = [
+            DevService(pid: 90001, port: 3000, command: "node", uptime: 5400),
+            DevService(pid: 90002, port: 5173, command: "node", uptime: 2100),
+            DevService(pid: 90003, port: 8000, command: "python", uptime: 720),
+        ]
+    }
     if argv.contains("--cooled"), let first = model.sessions.first {
         model.cooled = Set(first.pids)
     }
@@ -74,6 +84,15 @@ if argv.contains("--render") {
         } else {
             print("render failed")
         }
+    }
+    exit(0)
+}
+
+if argv.contains("--ports") {
+    let list = PortScanner.scan()
+    if list.isEmpty { print("没有检测到残留的开发服务") }
+    for s in list {
+        print(String(format: ":%d  %@  pid=%d  运行 %.0f 分钟", s.port, s.command, s.pid, s.uptime / 60))
     }
     exit(0)
 }

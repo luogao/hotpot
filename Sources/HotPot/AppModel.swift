@@ -9,11 +9,17 @@ final class AppModel: ObservableObject {
     @Published var cooled: Set<pid_t> = []
     @Published var processCount: Int = 0
     @Published var lastError: String?
+    /// 连续满载预警：rootPid → 已持续的秒数
+    @Published var alerts: [Int32: TimeInterval] = [:]
+    /// 残留的开发服务器
+    @Published var devServices: [DevService] = []
     /// 面板是否展开：关着的时候只需要刷新菜单栏温度，不用每 2 秒扫全表
     var panelOpen = false
 
     private let scanner = ProcessScanner()
     private let temp = TemperatureReader()
+    /// 5 分钟窗口、单会话超过 200%（双核满载）算异常
+    private let history = SessionHistory(threshold: 200, sustain: 300)
     private let queue = DispatchQueue(label: "whoiscooking.scan", qos: .utility)
     private var timer: Timer?
     private var warming = true
@@ -34,6 +40,7 @@ final class AppModel: ObservableObject {
         let procs = scanner.scan()
         sessions = SessionAggregator.build(from: procs)
         processCount = procs.count
+        devServices = PortScanner.scan()
         if let hot = temp?.hottestSilicon() ?? temp?.hottestAny() {
             temperature = hot.celsius
             sensorName = hot.name
@@ -44,15 +51,29 @@ final class AppModel: ObservableObject {
 
     private func tick() {
         tickCount += 1
-        // 温度 ~25ms，扫描 ~13ms：温度每 3 拍（6 秒）一次；面板关着时 10 秒才扫一次
-        let needTemp = (tickCount % 3 == 1)
-        let needScan = panelOpen || (tickCount % 5 == 1)
-        guard needTemp || needScan else { return }
+        // 温度 ~25ms，扫描 ~13ms，lsof ~30ms。各自降频，避免三个功能各扫一遍拖垮预算。
+        let needTemp = (tickCount % 3 == 1)          // 6 秒
+        let needScan = panelOpen || (tickCount % 5 == 1)  // 面板开 2 秒 / 关 10 秒
+        let needPorts = (tickCount % 30 == 1)        // 60 秒
+        guard needTemp || needScan || needPorts else { return }
         queue.async { [weak self] in
             guard let self else { return }
             let procs = needScan ? self.scanner.scan() : []
             let sessions = needScan ? SessionAggregator.build(from: procs) : self.sessions
             let hot = needTemp ? (self.temp?.hottestSilicon() ?? self.temp?.hottestAny()) : nil
+            let ports = needPorts ? PortScanner.scan() : self.devServices
+
+            // 历史与预警只在拿到新会话时更新，避免关面板时拿旧数据重复记账
+            var nextAlerts: [Int32: TimeInterval]? = nil
+            if needScan {
+                self.history.record(sessions)
+                var found: [Int32: TimeInterval] = [:]
+                for s in sessions {
+                    if let d = self.history.sustained(pid: s.rootPid) { found[s.rootPid] = d }
+                }
+                nextAlerts = found
+            }
+
             DispatchQueue.main.async {
                 if let hot {
                     self.temperature = hot.celsius
@@ -60,9 +81,11 @@ final class AppModel: ObservableObject {
                 }
                 if needScan { self.processCount = procs.count }
                 self.sessions = sessions
+                if let nextAlerts { self.alerts = nextAlerts }
+                if needPorts { self.devServices = ports }
                 // 清掉已退出进程的降温标记
                 let alive = Set(procs.map(\.pid))
-                self.cooled.formIntersection(alive)
+                if needScan { self.cooled.formIntersection(alive) }
                 self.lastError = self.temp == nil ? "温度传感器不可用" : nil
             }
         }
@@ -88,10 +111,21 @@ final class AppModel: ObservableObject {
         cooled.formUnion(ok)
     }
 
+    /// 关掉残留的开发服务（UI 层负责先确认）
+    func killDevServices() {
+        for s in devServices {
+            kill(s.pid, SIGTERM)
+        }
+        devServices = []
+    }
+
     func restoreAll() {
         Cooler.restore(pids: Array(cooled))
         cooled.removeAll()
     }
+
+    /// 有会话连续满载时的提示文案
+    var alertCount: Int { alerts.count }
 
     /// 温度分档：给状态栏和面板用同一套阈值
     var level: HeatLevel {

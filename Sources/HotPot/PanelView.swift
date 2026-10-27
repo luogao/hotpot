@@ -17,6 +17,7 @@ enum Theme {
 
 struct PanelView: View {
     @ObservedObject var model: AppModel
+    @State private var confirmingKill = false
 
     private var isDanger: Bool { model.temperature >= 85 }
     private var accent: Color { isDanger ? Theme.danger : Theme.accent }
@@ -26,6 +27,7 @@ struct PanelView: View {
             header
             readout
             content
+            if !model.devServices.isEmpty { devServicesBar }
             footer
         }
         .padding(EdgeInsets(top: 18, leading: 18, bottom: 16, trailing: 18))
@@ -40,11 +42,14 @@ struct PanelView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Circle().fill(accent).frame(width: 5, height: 5)
-            Text(model.level.label)
+            let alerting = model.alertCount > 0
+            Circle()
+                .fill(alerting ? Theme.danger : accent)
+                .frame(width: 5, height: 5)
+            Text(alerting ? "\(model.alertCount) 个持续满载" : model.level.label)
                 .font(.system(size: 11))
                 .tracking(0.6)
-                .foregroundStyle(isDanger ? Theme.danger.opacity(0.85) : Theme.ink2)
+                .foregroundStyle((alerting || isDanger) ? Theme.danger : Theme.ink2)
             Spacer(minLength: 8)
             if model.cooled.isEmpty {
                 OutlineButton(title: "全部降温", tint: accent) { model.coolAll() }
@@ -102,6 +107,7 @@ struct PanelView: View {
                 ForEach(Array(shown.enumerated()), id: \.element.rootPid) { i, s in
                     SessionRow(session: s,
                                cooled: model.isCooled(s),
+                               alert: model.alerts[s.rootPid],
                                accent: accent,
                                action: { model.toggleCool(s) })
                     if i < shown.count - 1 {
@@ -128,6 +134,38 @@ struct PanelView: View {
         .frame(maxHeight: .infinity)
         .padding(.vertical, 36)
         .padding(.horizontal, 2)
+    }
+
+    // MARK: 残留开发服务
+
+    private var devServicesBar: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Theme.accent)
+                Text("\(model.devServices.count) 个服务仍在占端口")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(Theme.ink3)
+                Spacer(minLength: 0)
+                Button("关闭") { confirmingKill = true }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+            }
+            Text(model.devServices.prefix(4).map { ":\($0.port) \($0.command)" }.joined(separator: "   "))
+                .font(.system(size: 9.5, design: .monospaced))
+                .foregroundStyle(Theme.ink2)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.top, 10)
+        .alert("关闭 \(model.devServices.count) 个开发服务？", isPresented: $confirmingKill) {
+            Button("关闭进程", role: .destructive) { model.killDevServices() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text(model.devServices.map { ":\($0.port) \($0.command)" }.joined(separator: "、"))
+        }
     }
 
     // MARK: 底部
@@ -188,13 +226,23 @@ struct ScaleBar: View {
 struct SessionRow: View {
     let session: AgentSession
     let cooled: Bool
+    /// 连续满载已持续的秒数（未达阈值时 nil）
+    let alert: TimeInterval?
     let accent: Color
     let action: () -> Void
+
+    private var alerting: Bool { alert != nil && !cooled }
 
     private var subtitle: String {
         if session.hasOtherUid { return "root 进程 · 无法降温" }
         if cooled { return "已降到能效核 · 任务继续跑" }
+        if let alert { return "连续满载 \(Self.duration(alert))" }
         return "\(session.summary) · \(session.pids.count) 进程"
+    }
+
+    static func duration(_ s: TimeInterval) -> String {
+        let m = Int(s) / 60, sec = Int(s) % 60
+        return m > 0 ? "\(m) 分 \(sec) 秒" : "\(sec) 秒"
     }
 
     var body: some View {
@@ -211,7 +259,7 @@ struct SessionRow: View {
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.system(size: 10.5))
-                    .foregroundStyle(Theme.ink2)
+                    .foregroundStyle(alerting ? Theme.danger.opacity(0.9) : Theme.ink2)
                     .lineLimit(1)
             }
 
@@ -219,7 +267,7 @@ struct SessionRow: View {
 
             Text(String(format: "%.0f%%", session.cpuPercent))
                 .font(.system(size: 12.5, design: .monospaced))
-                .foregroundStyle(Theme.ink3)
+                .foregroundStyle(alerting ? Theme.danger : Theme.ink3)
                 .frame(width: 48, alignment: .trailing)
 
             Button(action: action) {
@@ -237,6 +285,15 @@ struct SessionRow: View {
             .help(session.hasOtherUid ? "root 进程无法降温" : (cooled ? "恢复全速" : "降到能效核，不中断任务"))
         }
         .frame(height: 60)
+        // 预警用左侧竖条标记，不用整块底色：底块会读成「卡片」，和面板的无卡片语言冲突
+        .overlay(alignment: .leading) {
+            if alerting {
+                Rectangle()
+                    .fill(Theme.danger)
+                    .frame(width: 2)
+                    .offset(x: -9)
+            }
+        }
         .opacity(session.hasOtherUid ? 0.55 : 1)
     }
 }
