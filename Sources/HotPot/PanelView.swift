@@ -225,36 +225,40 @@ struct PanelView: View {
     // MARK: 底部（固定）
 
     private var footer: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 8) {
             Rectangle().fill(Theme.line).frame(height: 1)
 
-            HStack(spacing: 8) {
+            // 第一行只留「运行状态 + 操作」，版本和版权下沉到第二行，别和齿轮挤在一起
+            HStack(spacing: 10) {
                 Text(L10n.t("\(model.processCount) 进程 · \(model.cooled.count) 已降温",
                             "\(model.processCount) procs · \(model.cooled.count) cooled"))
-                    .font(.system(size: 9.5, design: .monospaced))
+                    .font(.system(size: 10, design: .monospaced))
                     .tracking(0.2)
                     .foregroundStyle(Theme.ink2)
                 Spacer(minLength: 0)
-                LinkText(title: "v" + AppInfo.version, url: AppInfo.releases, size: 9)
                 SettingsButton()
                 Button {
                     NSApplication.shared.terminate(nil)
                 } label: {
                     Image(systemName: "power")
-                        .font(.system(size: 10))
+                        .font(.system(size: 10.5))
                         .foregroundStyle(Theme.ink2.opacity(0.8))
                 }
                 .buttonStyle(.plain)
                 .help(L10n.t("退出 \(AppInfo.name)", "Quit \(AppInfo.name)"))
             }
-            .padding(.top, 6)
+            .frame(height: 18)
+            .padding(.top, 4)
 
             HStack(spacing: 6) {
-                LinkText(title: "github.com/luogao/hotpot", url: AppInfo.repo, size: 8.5)
-                Spacer(minLength: 0)
+                LinkText(title: "v" + AppInfo.version, url: AppInfo.releases, size: 9)
+                Text("·").font(.system(size: 9)).foregroundStyle(Theme.ink2.opacity(0.4))
+                LinkText(title: "GitHub", url: AppInfo.repo, size: 9)
+                Text("·").font(.system(size: 9)).foregroundStyle(Theme.ink2.opacity(0.4))
                 Text(AppInfo.copyright)
-                    .font(.system(size: 8.5))
-                    .foregroundStyle(Theme.ink2.opacity(0.6))
+                    .font(.system(size: 9))
+                    .foregroundStyle(Theme.ink2.opacity(0.65))
+                Spacer(minLength: 0)
             }
         }
     }
