@@ -2,9 +2,10 @@
 
 > 谁在烧我的 Mac？一个开源的小工具，告诉你哪个 AI agent 正在把机器烤热，并把它挪到能效核降温 —— 不打断它的工作。
 
-![panel](docs/ui/panel-v3.png)
-
-<p align="center"><img src="docs/ui/settings-v7.png" width="640" alt="设置窗口"></p>
+<p align="center">
+  <img src="docs/ui/panel-v3.png" height="460" alt="菜单栏面板">&nbsp;&nbsp;&nbsp;
+  <img src="docs/ui/settings-v7.png" height="460" alt="设置窗口">
+</p>
 
 ## 状态
 
