@@ -21,12 +21,12 @@ M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / �
 **Homebrew（推荐）**
 
 ```bash
-brew tap luogao/tap
-brew trust luogao/tap          # Homebrew 7+ 需要，信任第三方 tap
-brew install --cask hotpot
+brew install --cask luogao/tap/hotpot
 ```
 
-> 不要用 `brew install --cask <raw URL>` —— 新版 Homebrew 已不支持从 URL 直接装 cask，
+一条命令：Homebrew 会自动 tap 并信任这个 cask，装完直接能用（已去掉 quarantine）。
+
+> 不要用 `brew install --cask <raw URL>` —— 新版 Homebrew 不再支持从 URL 直接装 cask，
 > 会把 URL 当成 cask 名去查，报 `No Cask with this name exists`。
 
 **下载发行版**

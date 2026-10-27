@@ -13,9 +13,7 @@
 ## 安装
 
 ```bash
-brew tap luogao/tap
-brew trust luogao/tap
-brew install --cask hotpot
+brew install --cask luogao/tap/hotpot
 ```
 
 或手动：

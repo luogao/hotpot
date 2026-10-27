@@ -12,10 +12,15 @@ cask "hotpot" do
 
   app "HotPot.app"
 
-  caveats <<~EOS
-    HotPot 使用 ad-hoc 签名，首次打开需右键 →「打开」，或先执行：
-      xattr -d com.apple.quarantine "#{appdir}/HotPot.app"
+  # ad-hoc 签名的应用带 quarantine 会被 Gatekeeper 拦，装完直接去掉，
+  # 用户不用再手动 xattr（cask 分发自己的签名产物，风险可控）
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args: ["-dr", "com.apple.quarantine", "{{appdir}}/HotPot.app"],
+        writable_paths: ["{{appdir}}/HotPot.app"]
+  end
 
+  caveats <<~EOS
     开机自启默认关闭，可在菜单栏图标上右键开启。
     规则表：~/Library/Application Support/HotPot/rules.json
   EOS
