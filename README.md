@@ -2,15 +2,13 @@
 
 > 谁在烧我的 Mac？一个开源的小工具，告诉你哪个 AI agent 正在把机器烤热，并把它挪到能效核降温 —— 不打断它的工作。
 
-灵感来自 [WhoIsCooking](https://whoiscooking.site)，独立实现，MIT 协议。
+![panel](docs/ui/panel-v3.png)
 
-![panel](docs/ui/ui-state-normal.png)
-
-<p align="center"><img src="docs/ui/ui-state-danger.png" width="340" alt="91°C 危险态"></p>
+<p align="center"><img src="docs/ui/settings-v7.png" width="640" alt="设置窗口"></p>
 
 ## 状态
 
-M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / 连续满载预警 / 残留 dev server 提醒。
+M1 可用版：温度读取 / agent 归因 / 一键降温 / 菜单栏面板 / 连续满载预警 / 端口监控 / 设置窗口。
 
 - 需求与设计：[PRD.md](PRD.md)
 - 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
@@ -57,7 +55,9 @@ xattr -d com.apple.quarantine /Applications/HotPot.app
 2. agent 会话归并：一个 agent 的 node/npm 子进程合成一行
 3. 单个 / 全部降温与恢复（`taskpolicy` 降到能效核，进程不中断）
 4. **连续满载预警**：某个会话连续 5 分钟超过 200% CPU，行内标红并显示已持续多久（面板内提示，不弹系统通知）
-5. **残留 dev server**：终端关了但 `npm run dev` 还在占端口，面板底部列出端口，可一键关闭
+5. **端口监控**：列出 node / vite / python 这些开发服务占着的端口；终端关了但进程还在的标「残留」，可一键关闭
+6. **设置窗口**：开机自启、预警阈值、逐个 agent 开关；已安装的 agent 默认开启监控
+7. **支持 Pi**（pi coding agent）以及 Claude Code / Codex / Cursor / Gemini CLI / Aider / Copilot CLI / Ollama / LM Studio / Xcode Build / ffmpeg / Docker
 
 **配置**：`~/Library/Application Support/HotPot/rules.json`（首次启动生成）
 可加自己的 agent、白名单端口、改预警阈值。改坏了不会崩，会自动备份并回退默认。
@@ -109,3 +109,7 @@ swift build -c release
 ## License
 
 MIT
+
+---
+
+灵感来自 [WhoIsCooking](https://whoiscooking.site)，独立实现。

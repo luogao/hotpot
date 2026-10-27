@@ -1,14 +1,15 @@
 import Foundation
 import Darwin
 
-/// 一个仍在监听端口、但启动者已经退出的开发服务
+/// 一个监听本机端口的开发服务。`stray` 表示启动它的终端已经关了（被 launchd 收养）。
 struct DevService: Identifiable, Equatable {
     let pid: Int32
     let port: Int
     let command: String
     let uptime: TimeInterval
+    let stray: Bool
 
-    var id: Int32 { pid }
+    var id: String { "\(pid):\(port)" }
 
     var uptimeText: String {
         let h = Int(uptime) / 3600
@@ -17,8 +18,9 @@ struct DevService: Identifiable, Equatable {
     }
 }
 
-/// 找「残留」的开发服务器：`npm run dev` 起来后终端关了，进程被 launchd 收养，端口一直占着。
-/// 判定三条同时满足，避免把 redis / jellyfin / 系统 daemon 误报成残留。
+/// 列出所有开发服务占的端口：node / vite / python 这些命令在监听的都算。
+/// 只提示「残留」会让人误以为功能没生效（终端还开着的时候什么都不显示），
+/// 所以活跃的也列出来，残留的额外标一下、给关闭入口。
 enum PortScanner {
 
     /// 开发服务器常见命令（lsof 的命令名会被截到 9-15 字符）
@@ -27,8 +29,7 @@ enum PortScanner {
     /// 这些端口的持有者大概率是长期服务，不提示
     private static var ignoreCommands: [String] { Rules.shared.ignorePortCommands }
 
-    /// - Parameters:
-    ///   - maxAge: 超过这个运行时长就不算「刚才不小心留下的」
+    /// - Parameter maxAge: 超过这个运行时长就不算「刚才不小心留下的」，但仍会列出（只是不标残留）
     static func scan(maxAge: TimeInterval = 48 * 3600) -> [DevService] {
         guard let text = runLsof() else { return [] }
 
@@ -43,10 +44,12 @@ enum PortScanner {
             let base = (curCmd as NSString).lastPathComponent.lowercased()
             guard !ignoreCommands.contains(where: { base.contains($0) }) else { return }
             guard devCommands.contains(where: { base.contains($0) }) else { return }
-            guard let ppid = parentPid(curPid), ppid == 1 else { return }
-            guard let age = runTime(curPid), age < maxAge else { return }
+            let ppid = parentPid(curPid) ?? 0
+            let age = runTime(curPid) ?? 0
+            let stray = ppid == 1 && age < maxAge
             for p in curPorts where p >= 1024 {
-                results.append(DevService(pid: curPid, port: p, command: base, uptime: age))
+                results.append(DevService(pid: curPid, port: p, command: base,
+                                          uptime: age, stray: stray))
             }
         }
 
@@ -68,11 +71,14 @@ enum PortScanner {
         }
         flush()
 
-        // 同一 pid 多个端口只留第一个，UI 一行一个
-        var seen = Set<Int32>()
+        // 同一端口只留一条；常见端口在前，调试端口（9229 等）靠后
+        var seenPort = Set<Int>()
         return results
-            .sorted { $0.port < $1.port }
-            .filter { seen.insert($0.pid).inserted }
+            .sorted { a, b in
+                if a.stray != b.stray { return a.stray && !b.stray }
+                return a.port < b.port
+            }
+            .filter { seenPort.insert($0.port).inserted }
     }
 
     // MARK: - lsof

@@ -8,6 +8,10 @@ struct AgentDef {
     let patterns: [String]
     /// 命中任一则排除（避免把 IDE 的渲染进程当成 agent 本体）
     let excludes: [String]
+    /// 精确比对 basename 的可执行名（pi / pi-desktop 这类短名不能用子串匹配）
+    let bin: String?
+    /// 安装位置（已展开 ~），设置页用它标「已安装」
+    let detect: [String]
 }
 
 /// 规则表来自 `~/Library/Application Support/HotPot/rules.json`，
@@ -20,7 +24,14 @@ enum AgentRegistry {
                  name: rule.name,
                  symbol: rule.symbol ?? "circle.dashed",
                  patterns: rule.patterns,
-                 excludes: rule.excludes ?? [])
+                 excludes: rule.excludes ?? [],
+                 bin: rule.bin,
+                 detect: (rule.detect ?? []).map { ($0 as NSString).expandingTildeInPath })
+    }
+
+    /// 已安装检测：配置目录 / 可执行文件任一存在。用于设置页标注，不参与归因。
+    static func isInstalled(_ d: AgentDef) -> Bool {
+        d.detect.contains { FileManager.default.fileExists(atPath: $0) }
     }
 
     static func match(_ p: ProcInfo) -> AgentDef? {
@@ -37,6 +48,8 @@ enum AgentRegistry {
         let hay = base + " " + args
         for d in all {
             if d.excludes.contains(where: { hay.contains($0.lowercased()) }) { continue }
+            // 精确名优先：pi 只认 basename == "pi"，不会吃掉 pip / ping / python
+            if let bin = d.bin?.lowercased(), base == bin { return d }
             if d.patterns.contains(where: { hay.contains($0.lowercased()) }) { return d }
         }
         return nil

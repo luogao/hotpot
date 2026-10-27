@@ -3,54 +3,74 @@ import AppKit
 import ServiceManagement
 
 /// C 方案「三栏参数台」：左栏导航 + 右侧参数区，深色，和主面板同源。
-/// 尺寸取自设计稿：窗口 580 × 684（内容区），左栏 132，主区 padding 18/20/16，section 间距 20。
-/// 控件全部自绘（PillToggle / StepButton）—— 系统 Toggle/Slider 在离屏渲染里画不出来，
-/// 而且胶囊开关和刻度条才是这个产品该有的语言。
+/// 640 × 760（内容区）：字号按桌面阅读距离放大，左栏三项可点、跳转到对应分区。
 struct SettingsView: View {
     @State private var rules: Rules
     @State private var launchAtLogin: Bool
     @State private var dirty = false
+    @State private var selected = 1
 
     private let onClose: () -> Void
+    private let scrollable: Bool
 
-    init(onClose: @escaping () -> Void) {
+    init(onClose: @escaping () -> Void, scrollable: Bool = true) {
         _rules = State(initialValue: Rules.shared)
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
         self.onClose = onClose
+        self.scrollable = scrollable
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            rail
-            main
+        ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    rail(proxy)
+                    mainScroll(proxy)
+                }
+                .frame(width: 640, height: 726, alignment: .top)
+                .clipped()
+                footer
+            }
         }
-        .frame(width: 580, height: 684)
+        .frame(width: 640, height: 760)
         .background(Theme.bg)
     }
 
-    // MARK: - 左栏
+    // MARK: - 左栏（可点跳转）
 
-    private var rail: some View {
+    private func rail(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("HOTPOT")
-                .font(.system(size: 9, design: .monospaced))
-                .tracking(1.4)
+                .font(.system(size: 10, design: .monospaced))
+                .tracking(1.6)
                 .foregroundStyle(Theme.ink3.opacity(0.75))
             Text(L10n.t("设置", "Settings"))
-                .font(.system(size: 11))
+                .font(.system(size: 13))
                 .foregroundStyle(Theme.ink2)
-                .padding(.top, 3)
+                .padding(.top, 4)
 
             VStack(spacing: 0) {
-                RailItem(n: "01", label: L10n.t("通用", "General"), count: "1")
-                RailItem(n: "02", label: L10n.t("预警", "Alerts"), count: "2")
-                RailItem(n: "03", label: "Agent", count: "\(rules.agents.count)", isLast: true)
+                RailItem(n: "01", label: L10n.t("通用", "General"), count: "1",
+                         selected: selected == 1) {
+                    selected = 1
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(1, anchor: .top) }
+                }
+                RailItem(n: "02", label: L10n.t("预警", "Alerts"), count: "2",
+                         selected: selected == 2) {
+                    selected = 2
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(2, anchor: .top) }
+                }
+                RailItem(n: "03", label: "Agent", count: "\(rules.agents.count)",
+                         selected: selected == 3, isLast: true) {
+                    selected = 3
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(3, anchor: .top) }
+                }
             }
-            .padding(.top, 18)
+            .padding(.top, 20)
 
             Spacer(minLength: 0)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 RailLink(title: L10n.t("打开规则文件", "Open rules file")) {
                     NSWorkspace.shared.open(Rules.path)
                 }
@@ -62,45 +82,62 @@ struct SettingsView: View {
                     save()
                 } label: {
                     Text(dirty ? L10n.t("保存并重启", "Save & restart") : L10n.t("保存", "Save"))
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Color(red: 21/255, green: 14/255, blue: 4/255))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 28)
+                        .frame(height: 32)
                         .background(RoundedRectangle(cornerRadius: 3).fill(Theme.accent))
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 2)
+                .padding(.top, 4)
             }
         }
-        .padding(EdgeInsets(top: 14, leading: 12, bottom: 14, trailing: 12))
-        .frame(width: 132, alignment: .leading)
+        .padding(EdgeInsets(top: 18, leading: 14, bottom: 26, trailing: 14))
+        .frame(width: 152, height: 726, alignment: .topLeading)
         .overlay(alignment: .trailing) {
             Rectangle().fill(Color.white.opacity(0.14)).frame(width: 1)
         }
     }
 
-    // MARK: - 右侧
+    // MARK: - 右侧滚动区
 
-    private var main: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            generalSection
-            alertSection
-            agentsSection
+    @ViewBuilder
+    private func mainScroll(_ proxy: ScrollViewProxy) -> some View {
+        if scrollable {
+            ScrollView(.vertical, showsIndicators: true) {
+                sections
+                    .padding(EdgeInsets(top: 20, leading: 24, bottom: 24, trailing: 24))
+            }
+            .frame(maxHeight: .infinity)
+        } else {
+            sections
+                .padding(EdgeInsets(top: 20, leading: 24, bottom: 24, trailing: 24))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .clipped()
         }
-        .padding(EdgeInsets(top: 18, leading: 20, bottom: 16, trailing: 20))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
+
+    private var sections: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            generalSection.id(1)
+            alertSection.id(2)
+            agentsSection.id(3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - 01 通用
 
     private var generalSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHead(n: "01", title: L10n.t("通用", "General"))
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.t("开机自启", "Launch at login"))
-                        .font(.system(size: 12))
+                        .font(.system(size: 13.5))
                         .foregroundStyle(Theme.ink)
                     Text(L10n.t("登录后自动驻留菜单栏", "Stay in the menu bar after login"))
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundStyle(Theme.ink2)
                 }
                 Spacer(minLength: 0)
@@ -109,56 +146,83 @@ struct SettingsView: View {
                     set: { applyLaunchAtLogin($0) }
                 ))
             }
-            .frame(height: 50)
+            .frame(height: 58)
             .overlay(alignment: .bottom) {
                 Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
             }
         }
     }
 
+    // MARK: - 02 预警
+
     private var alertSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHead(n: "02", title: L10n.t("异常预警", "Alerts"))
-            Text(L10n.t("agent 持续超过阈值时，顶部标红并显示已持续多久。",
+            Text(L10n.t("agent 持续超过阈值时，面板顶部标红并显示已持续多久。",
                         "When an agent stays above the threshold, the panel flags it."))
-                .font(.system(size: 10))
+                .font(.system(size: 11))
                 .foregroundStyle(Theme.ink2)
-                .frame(height: 20, alignment: .top)
-                .padding(.top, 4)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
 
             StepperRow(label: L10n.t("CPU 阈值", "CPU threshold"),
                        value: "\(Int(rules.alert.cpuPercent))",
                        unit: "%",
-                       dec: { rules.alert.cpuPercent = max(100, rules.alert.cpuPercent - 50); dirty = true },
-                       inc: { rules.alert.cpuPercent = min(800, rules.alert.cpuPercent + 50); dirty = true })
+                       dec: { bumpCPU(-50) },
+                       inc: { bumpCPU(+50) })
 
             StepperRow(label: L10n.t("持续时长", "Sustained for"),
                        value: "\(Int(rules.alert.sustainSeconds / 60))",
                        unit: L10n.t("分钟", "min"),
-                       dec: { rules.alert.sustainSeconds = max(60, rules.alert.sustainSeconds - 60); dirty = true },
-                       inc: { rules.alert.sustainSeconds = min(900, rules.alert.sustainSeconds + 60); dirty = true })
+                       dec: { bumpSustain(-1) },
+                       inc: { bumpSustain(+1) })
         }
     }
+
+    private func bumpCPU(_ delta: Double) {
+        rules.alert.cpuPercent = min(800, max(100, rules.alert.cpuPercent + delta))
+        dirty = true
+    }
+
+    private func bumpSustain(_ delta: Double) {
+        rules.alert.sustainSeconds = min(900, max(60, rules.alert.sustainSeconds + delta * 60))
+        dirty = true
+    }
+
+    // MARK: - 03 Agent
 
     private var agentsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionHead(n: "03", title: L10n.t("识别的 Agent", "Detected agents"),
-                        trailing: "\(rules.agents.count)")
+                        trailing: L10n.t("\(installedCount) 已安装", "\(installedCount) installed"))
             ForEach(Array($rules.agents.enumerated()), id: \.offset) { idx, $agent in
+                let installed = isInstalled(agent)
                 HStack(spacing: 12) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 9) {
                         Image(systemName: agent.symbol ?? "circle.dashed")
-                            .font(.system(size: 11))
+                            .font(.system(size: 12.5))
                             .foregroundStyle((agent.enabled ?? true) ? Theme.ink3 : Theme.ink2)
-                            .frame(width: 14)
+                            .frame(width: 16)
                         Text(agent.name)
-                            .font(.system(size: 11))
-                            .foregroundStyle((agent.enabled ?? true) ? Theme.ink : Theme.ink2)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle((agent.enabled ?? true) ? Theme.ink : Theme.ink2.opacity(0.8))
                             .lineLimit(1)
+                        if !installed {
+                            Text(L10n.t("未安装", "not installed"))
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(Theme.ink2.opacity(0.45))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .stroke(Theme.ink2.opacity(0.2), lineWidth: 1)
+                                )
+                        }
                     }
                     Spacer(minLength: 0)
                     Text((agent.enabled ?? true) ? "ON" : "OFF")
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(.system(size: 10, design: .monospaced))
                         .tracking(0.5)
                         .foregroundStyle((agent.enabled ?? true) ? Theme.ink3 : Theme.ink2)
                         .frame(width: 44, alignment: .trailing)
@@ -167,13 +231,44 @@ struct SettingsView: View {
                         set: { agent.enabled = $0; dirty = true }
                     ))
                 }
-                .frame(height: 30)
+                .frame(height: 34)
+                .opacity(installed ? 1 : 0.72)
                 .overlay(alignment: .top) {
                     if idx > 0 {
                         Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
                     }
                 }
             }
+        }
+    }
+
+    private var installedCount: Int {
+        rules.agents.filter(isInstalled).count
+    }
+
+    private func isInstalled(_ rule: AgentRule) -> Bool {
+        let paths = (rule.detect ?? []).map { ($0 as NSString).expandingTildeInPath }
+        // 没写 detect 的老规则：无法判断，按已安装处理，别把它误标成「未安装」
+        if paths.isEmpty { return true }
+        return paths.contains { FileManager.default.fileExists(atPath: $0) }
+    }
+
+    // MARK: - 页脚
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            Text(AppInfo.copyright)
+                .font(.system(size: 10))
+                .foregroundStyle(Theme.ink2.opacity(0.6))
+            Spacer(minLength: 0)
+            LinkText(title: "v" + AppInfo.version, url: AppInfo.releases, size: 10)
+            Text("·").font(.system(size: 10)).foregroundStyle(Theme.ink2.opacity(0.4))
+            LinkText(title: "github.com/luogao/hotpot", url: AppInfo.repo, size: 10)
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 34)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.10)).frame(height: 1)
         }
     }
 
@@ -220,22 +315,36 @@ private struct RailItem: View {
     let n: String
     let label: String
     let count: String
+    let selected: Bool
     var isLast: Bool = false
+    let action: () -> Void
+    @State private var hover = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(n)
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(Theme.accent)
-            Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.ink3)
-            Spacer(minLength: 0)
-            Text(count)
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(Theme.ink2)
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Text(n)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(Theme.accent.opacity(selected ? 1 : 0.7))
+                Text(label)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(selected ? Theme.ink : Theme.ink3)
+                Spacer(minLength: 0)
+                Text(count)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(Theme.ink2)
+            }
+            .padding(.horizontal, 7)
+            .frame(height: 42)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(selected ? Color.white.opacity(0.06)
+                          : (hover ? Color.white.opacity(0.03) : Color.clear))
+            )
         }
-        .frame(height: 38)
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
         .overlay(alignment: .top) {
             Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
         }
@@ -255,7 +364,7 @@ private struct RailLink: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 10))
+                .font(.system(size: 11.5))
                 .foregroundStyle(hover ? Theme.ink : Theme.ink2)
         }
         .buttonStyle(.plain)
@@ -269,22 +378,22 @@ private struct SectionHead: View {
     var trailing: String? = nil
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Text(n)
-                .font(.system(size: 9, design: .monospaced))
+                .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(Theme.accent)
             Text(title)
-                .font(.system(size: 10))
-                .tracking(0.8)
+                .font(.system(size: 11.5))
+                .tracking(0.9)
                 .foregroundStyle(Theme.ink2)
             Spacer(minLength: 0)
             if let trailing {
                 Text(trailing)
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(Theme.ink2)
             }
         }
-        .frame(height: 18)
+        .frame(height: 24)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.white.opacity(0.16)).frame(height: 1)
         }
@@ -299,28 +408,33 @@ private struct StepperRow: View {
     let inc: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             Text(label)
-                .font(.system(size: 11))
+                .font(.system(size: 12.5))
                 .foregroundStyle(Theme.ink3)
             Spacer(minLength: 0)
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 15, design: .monospaced))
+                    .font(.system(size: 18, design: .monospaced))
                     .foregroundStyle(Theme.accent)
                 Text(unit)
-                    .font(.system(size: 9))
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(Theme.ink2)
             }
-            .frame(width: 72, alignment: .trailing)
+            .frame(width: 84, alignment: .trailing)
 
-            HStack(spacing: 4) {
+            // 两个按钮合成一组，中间一条分隔线：命中区 28×28，比图标本身大
+            HStack(spacing: 0) {
                 StepButton(symbol: "minus", action: dec)
+                Rectangle().fill(Color.white.opacity(0.14)).frame(width: 1, height: 18)
                 StepButton(symbol: "plus", action: inc)
             }
-            .frame(width: 56, alignment: .trailing)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+            )
         }
-        .frame(height: 56)
+        .frame(height: 64)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
         }
@@ -333,14 +447,17 @@ private struct StepButton: View {
     @State private var hover = false
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            action()
+        } label: {
             Image(systemName: symbol)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(hover ? Theme.ink : Theme.ink2)
-                .frame(width: 22, height: 22)
-                .overlay(
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(hover ? Theme.accent : Theme.ink2)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+                .background(
                     RoundedRectangle(cornerRadius: 3)
-                        .stroke(hover ? Theme.accent : Color.white.opacity(0.18), lineWidth: 1)
+                        .fill(hover ? Color.white.opacity(0.06) : Color.clear)
                 )
         }
         .buttonStyle(.plain)
@@ -369,6 +486,7 @@ struct PillToggle: View {
                         .padding(2)
                 }
                 .frame(width: 34, height: 18)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -380,7 +498,12 @@ final class SettingsWindowController {
     private var window: NSWindow?
 
     func show() {
+        // 窗口复用会让 @State 留着上次没保存的改动，看起来像「自己保存了」。
+        // 每次打开都重建 rootView，回到磁盘上的真实状态。
         if let w = window {
+            if let host = w.contentViewController as? NSHostingController<SettingsView> {
+                host.rootView = SettingsView(onClose: { [weak self] in self?.window?.close() })
+            }
             w.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return

@@ -61,9 +61,9 @@ if argv.contains("--render") {
     }
     if argv.contains("--dev") {
         model.devServices = [
-            DevService(pid: 90001, port: 3000, command: "node", uptime: 5400),
-            DevService(pid: 90002, port: 5173, command: "node", uptime: 2100),
-            DevService(pid: 90003, port: 8000, command: "python", uptime: 720),
+            DevService(pid: 90001, port: 3000, command: "node", uptime: 5400, stray: true),
+            DevService(pid: 90002, port: 5173, command: "node", uptime: 2100, stray: true),
+            DevService(pid: 90003, port: 8000, command: "python", uptime: 720, stray: false),
         ]
     }
     if argv.contains("--cooled"), let first = model.sessions.first {
@@ -73,9 +73,10 @@ if argv.contains("--render") {
         ?? "/Users/gaogao/Documents/Hermes/whoscooking-oss/poc-panel.png"
     let renderSettings = argv.contains("--settings")
     MainActor.assumeIsolated {
+        // 离屏渲染时 ScrollView 会整块空白，两张图各自关掉滚动
         let view = renderSettings
-            ? AnyView(SettingsView(onClose: {}))
-            : AnyView(PanelView(model: model))
+            ? AnyView(SettingsView(onClose: {}, scrollable: false))
+            : AnyView(PanelView(model: model, scrollable: false))
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         if let img = renderer.nsImage,
@@ -93,9 +94,10 @@ if argv.contains("--render") {
 
 if argv.contains("--ports") {
     let list = PortScanner.scan()
-    if list.isEmpty { print("没有检测到残留的开发服务") }
+    if list.isEmpty { print("没有检测到开发服务占端口") }
     for s in list {
-        print(String(format: ":%d  %@  pid=%d  运行 %.0f 分钟", s.port, s.command, s.pid, s.uptime / 60))
+        print(String(format: ":%d  %-8@ pid=%-7d 运行 %.0f 分钟%@", s.port, s.command as NSString,
+                     s.pid, s.uptime / 60, s.stray ? "  [残留]" : ""))
     }
     exit(0)
 }

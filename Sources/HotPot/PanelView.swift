@@ -1,7 +1,8 @@
 import SwiftUI
+import AppKit
 
 // 视觉规格来自 Open Design 的 A 方案「Instrument」：
-// 340×540，深色 #0C0C0D，等宽大数字，20 格温度刻度，单色线条图标，唯一强调色琥珀。
+// 340 宽，深色 #0C0C0D，等宽大数字，20 格温度刻度，单色线条图标，唯一强调色琥珀。
 
 enum Theme {
     static let bg     = Color(red: 12/255,  green: 12/255,  blue: 13/255)   // #0C0C0D
@@ -15,8 +16,19 @@ enum Theme {
     static let border = Color.white.opacity(0.07)
 }
 
+enum AppInfo {
+    static var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    }
+    static let repo = URL(string: "https://github.com/luogao/hotpot")!
+    static let releases = URL(string: "https://github.com/luogao/hotpot/releases")!
+    static let copyright = "© 2026 luogao"
+}
+
 struct PanelView: View {
     @ObservedObject var model: AppModel
+    /// 离屏渲染时 ScrollView 会整块空白，--render 传 false 走普通 VStack
+    var scrollable: Bool = true
     @State private var confirmingKill = false
 
     private var isDanger: Bool { model.temperature >= 85 }
@@ -26,19 +38,17 @@ struct PanelView: View {
         VStack(spacing: 0) {
             header
             readout
-            content
-            if !model.devServices.isEmpty { devServicesBar }
+            listBody
             footer
         }
-        .padding(EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 18))
-        .frame(width: 340)
-        .frame(minHeight: 380)
+        .padding(EdgeInsets(top: 18, leading: 18, bottom: 14, trailing: 18))
+        .frame(width: 340, height: 580)
         .background(Theme.bg)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
     }
 
-    // MARK: 顶部状态 + 主按钮
+    // MARK: 顶部状态 + 主按钮（固定）
 
     private var header: some View {
         HStack(spacing: 8) {
@@ -60,11 +70,10 @@ struct PanelView: View {
         .frame(height: 30)
     }
 
-    // MARK: 温度读数
+    // MARK: 温度读数（固定）
 
     private var readout: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // baseline 对齐：数字和 °C 坐同一条基线，比 top 对齐靠 padding 凑更准
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(model.temperature > 0 ? "\(Int(model.temperature.rounded()))" : "—")
                     .font(.system(size: 72, weight: .medium, design: .monospaced))
@@ -76,7 +85,6 @@ struct PanelView: View {
                     .font(.system(size: 19, design: .monospaced))
                     .foregroundStyle(isDanger ? Theme.danger.opacity(0.7) : Theme.ink2)
             }
-            // monospaced 数字行高约 1.2 倍字号，上下各留 ~12pt 空白，这里收掉下行空白
             .padding(.bottom, -4)
 
             Text(L10n.t("最热传感器", "hottest sensor") + " · " + (model.sensorName.isEmpty ? "—" : model.sensorName))
@@ -91,31 +99,50 @@ struct PanelView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 2)
-        .padding(.bottom, 16)
+        .padding(.bottom, 14)
         .padding(.horizontal, 2)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.line).frame(height: 1)
         }
     }
 
-    // MARK: 会话列表
+    // MARK: 可滚动区：agent 会话 + 端口
 
     @ViewBuilder
-    private var content: some View {
-        if model.sessions.isEmpty {
-            emptyState
+    private var listBody: some View {
+        if scrollable {
+            ScrollView(.vertical, showsIndicators: true) {
+                listContent
+            }
+            .frame(maxHeight: .infinity)
         } else {
-            let shown = Array(model.sessions.prefix(4))
-            VStack(spacing: 0) {
-                ForEach(Array(shown.enumerated()), id: \.element.rootPid) { i, s in
-                    SessionRow(session: s,
-                               cooled: model.isCooled(s),
-                               alert: model.alerts[s.rootPid],
-                               accent: accent,
-                               action: { model.toggleCool(s) })
-                    if i < shown.count - 1 {
-                        Rectangle().fill(Theme.line).frame(height: 1)
-                    }
+            listContent
+                .frame(maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private var listContent: some View {
+        VStack(spacing: 0) {
+            if model.sessions.isEmpty && model.devServices.isEmpty {
+                emptyState
+            } else {
+                sessionsSection
+                if !model.devServices.isEmpty { portsSection }
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private var sessionsSection: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(model.sessions.enumerated()), id: \.element.rootPid) { i, s in
+                SessionRow(session: s,
+                           cooled: model.isCooled(s),
+                           alert: model.alerts[s.rootPid],
+                           accent: accent,
+                           action: { model.toggleCool(s) })
+                if i < model.sessions.count - 1 {
+                    Rectangle().fill(Theme.line).frame(height: 1)
                 }
             }
         }
@@ -127,74 +154,125 @@ struct PanelView: View {
                 Text(L10n.t("当前没有 agent 在跑", "No agents running"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.ink)
-                Text(L10n.t("Claude Code / Codex / Cursor 一启动就会出现在这里", "They show up here as soon as you start one"))
+                Text(L10n.t("Claude Code / Codex / Pi 一启动就会出现在这里", "They show up here as soon as you start one"))
                     .font(.system(size: 10.5))
                     .foregroundStyle(Theme.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
-        .frame(maxHeight: .infinity)
         .padding(.vertical, 36)
         .padding(.horizontal, 2)
     }
 
-    // MARK: 残留开发服务
+    // MARK: 端口（在滚动区内，跟着列表一起滚）
 
-    private var devServicesBar: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(Theme.accent)
-                Text(L10n.t("\(model.devServices.count) 个服务仍在占端口", "\(model.devServices.count) services holding ports"))
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(Theme.ink3)
-                Spacer(minLength: 0)
-                Button(L10n.t("关闭", "Kill")) { confirmingKill = true }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+    private var portsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Rectangle().fill(Theme.line).frame(height: 1)
+                Text(L10n.t("监听端口", "Listening"))
+                    .font(.system(size: 9, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(Theme.ink2)
+                Rectangle().fill(Theme.line).frame(height: 1)
             }
-            Text(model.devServices.prefix(4).map { ":\($0.port) \($0.command)" }.joined(separator: "   "))
-                .font(.system(size: 9.5, design: .monospaced))
-                .foregroundStyle(Theme.ink2)
-                .lineLimit(1)
-                .truncationMode(.tail)
+            .padding(.vertical, 12)
+
+            ForEach(model.devServices) { s in
+                HStack(spacing: 8) {
+                    Text(":" + String(s.port))
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(Theme.ink3)
+                        .frame(width: 46, alignment: .leading)
+                    Text(s.command)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.ink2)
+                    Spacer(minLength: 0)
+                    if s.stray {
+                        Text(L10n.t("残留", "stray"))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+                .frame(height: 26)
+            }
+
+            if model.devServices.contains(where: { $0.stray }) {
+                HStack {
+                    Spacer(minLength: 0)
+                    Button(L10n.t("关闭残留服务", "Kill stray")) { confirmingKill = true }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+                .padding(.top, 4)
+            }
         }
-        .padding(.top, 14)
-        .alert(L10n.t("关闭 \(model.devServices.count) 个开发服务？", "Kill \(model.devServices.count) dev services?"), isPresented: $confirmingKill) {
+        .alert(L10n.t("关闭残留的开发服务？", "Kill stray dev services?"), isPresented: $confirmingKill) {
             Button(L10n.t("关闭进程", "Kill processes"), role: .destructive) { model.killDevServices() }
             Button(L10n.t("取消", "Cancel"), role: .cancel) {}
         } message: {
-            Text(model.devServices.map { ":\($0.port) \($0.command)" }.joined(separator: "、"))
+            Text(model.devServices.filter(\.stray).map { ":\($0.port) \($0.command)" }.joined(separator: "、"))
         }
     }
 
-    // MARK: 底部
+    // MARK: 底部（固定）
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            Text(L10n.t("\(model.processCount) 个进程 · \(model.cooled.count) 个已降温", "\(model.processCount) processes · \(model.cooled.count) cooled"))
-                .font(.system(size: 10, design: .monospaced))
-                .tracking(0.2)
-                .foregroundStyle(Theme.ink2)
-            Spacer(minLength: 0)
-            SettingsButton()
-            Button {
-                NSApplication.shared.terminate(nil)
-            } label: {
-                Image(systemName: "power")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Theme.ink2.opacity(0.8))
-            }
-            .buttonStyle(.plain)
-            .help(L10n.t("退出 HotPot", "Quit HotPot"))
-        }
-        .padding(.top, 14)
-        .overlay(alignment: .top) {
+        VStack(spacing: 5) {
             Rectangle().fill(Theme.line).frame(height: 1)
+
+            HStack(spacing: 8) {
+                Text(L10n.t("\(model.processCount) 进程 · \(model.cooled.count) 已降温",
+                            "\(model.processCount) procs · \(model.cooled.count) cooled"))
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .tracking(0.2)
+                    .foregroundStyle(Theme.ink2)
+                Spacer(minLength: 0)
+                LinkText(title: "v" + AppInfo.version, url: AppInfo.releases, size: 9)
+                SettingsButton()
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Image(systemName: "power")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.ink2.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .help(L10n.t("退出 HotPot", "Quit HotPot"))
+            }
+            .padding(.top, 6)
+
+            HStack(spacing: 6) {
+                LinkText(title: "github.com/luogao/hotpot", url: AppInfo.repo, size: 8.5)
+                Spacer(minLength: 0)
+                Text(AppInfo.copyright)
+                    .font(.system(size: 8.5))
+                    .foregroundStyle(Theme.ink2.opacity(0.6))
+            }
         }
+    }
+}
+
+// MARK: - 可点文字链
+
+struct LinkText: View {
+    let title: String
+    let url: URL
+    var size: CGFloat = 9
+    @State private var hover = false
+
+    var body: some View {
+        Button {
+            NSWorkspace.shared.open(url)
+        } label: {
+            Text(title)
+                .font(.system(size: size, design: .monospaced))
+                .foregroundStyle(hover ? Theme.accent : Theme.ink2.opacity(0.75))
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
     }
 }
 

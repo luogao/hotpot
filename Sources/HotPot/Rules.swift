@@ -11,6 +11,10 @@ struct AgentRule: Codable {
     var excludes: [String]?
     /// 设置页里的开关。旧文件没有这个字段时按启用处理。
     var enabled: Bool?
+    /// 可执行名，**精确**比对 basename。两三个字母的名字（pi）靠 contains 会撞 pip / ping / python。
+    var bin: String?
+    /// 安装位置（支持 ~ 开头）。任一存在即视为「已安装」，设置页据此标注。
+    var detect: [String]?
 }
 
 struct AlertRule: Codable {
@@ -43,28 +47,33 @@ struct Rules: Codable {
         agents: [
             AgentRule(id: "claude", name: "Claude Code", symbol: "asterisk",
                       patterns: ["claude", ".claude/local"],
-                      excludes: ["Claude.app", "Claude Helper", "claude.ai"], enabled: true),
+                      excludes: ["Claude.app", "Claude Helper", "claude.ai"], enabled: true, detect: ["~/.claude", "~/.claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]),
             AgentRule(id: "codex", name: "Codex CLI", symbol: "terminal",
-                      patterns: ["codex"], excludes: ["Codex.app/Contents/Frameworks"], enabled: true),
+                      patterns: ["codex"], excludes: ["Codex.app/Contents/Frameworks"], enabled: true, detect: ["~/.codex", "/opt/homebrew/bin/codex", "/usr/local/bin/codex"]),
             AgentRule(id: "cursor", name: "Cursor", symbol: "cursorarrow",
-                      patterns: ["cursor-agent", "Cursor Helper (Renderer)"], excludes: [], enabled: true),
+                      patterns: ["cursor-agent", "Cursor Helper (Renderer)"], excludes: [], enabled: true, detect: ["/Applications/Cursor.app", "~/.cursor"]),
             AgentRule(id: "gemini", name: "Gemini CLI", symbol: "sparkles",
-                      patterns: ["gemini"], excludes: ["Gemini.app"], enabled: true),
+                      patterns: ["gemini"], excludes: ["Gemini.app"], enabled: true, detect: ["~/.gemini", "/opt/homebrew/bin/gemini", "/usr/local/bin/gemini"]),
             AgentRule(id: "aider", name: "Aider", symbol: "chevron.left.forwardslash.chevron.right",
-                      patterns: ["aider"], excludes: [], enabled: true),
+                      patterns: ["aider"], excludes: [], enabled: true, detect: ["~/.aider.conf.yml", "/opt/homebrew/bin/aider", "/usr/local/bin/aider"]),
             AgentRule(id: "copilot", name: "Copilot CLI", symbol: "person.crop.circle",
-                      patterns: ["copilot"], excludes: [], enabled: true),
+                      patterns: ["copilot"], excludes: [], enabled: true, detect: ["~/.copilot", "/opt/homebrew/bin/copilot", "/usr/local/bin/copilot"]),
+            AgentRule(id: "pi", name: "Pi", symbol: "p.circle",
+                      patterns: ["pi-coding-agent"], excludes: [],
+                      enabled: true, bin: "pi",
+                      detect: ["~/.pi/agent", "~/.bun/bin/pi", "~/.npm-global/bin/pi",
+                               "/opt/homebrew/bin/pi", "/usr/local/bin/pi"]),
             AgentRule(id: "ollama", name: "Ollama", symbol: "circle.hexagongrid",
-                      patterns: ["ollama"], excludes: [], enabled: true),
+                      patterns: ["ollama"], excludes: [], enabled: true, detect: ["/Applications/Ollama.app", "/opt/homebrew/bin/ollama"]),
             AgentRule(id: "lmstudio", name: "LM Studio", symbol: "cube",
-                      patterns: ["LM Studio", "lms "], excludes: [], enabled: true),
+                      patterns: ["LM Studio", "lms "], excludes: [], enabled: true, detect: ["/Applications/LM Studio.app", "~/.lmstudio", "~/.cache/lm-studio"]),
             AgentRule(id: "xcode", name: "Xcode Build", symbol: "hammer",
                       patterns: ["xcodebuild", "swift-build", "swift-frontend", "clang"],
-                      excludes: ["SourceKit", "clangd"], enabled: true),
+                      excludes: ["SourceKit", "clangd"], enabled: true, detect: ["/Applications/Xcode.app"]),
             AgentRule(id: "ffmpeg", name: "ffmpeg", symbol: "film",
-                      patterns: ["ffmpeg"], excludes: [], enabled: true),
+                      patterns: ["ffmpeg"], excludes: [], enabled: true, detect: ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]),
             AgentRule(id: "docker", name: "Docker", symbol: "shippingbox",
-                      patterns: ["com.docker", "docker"], excludes: ["Docker Desktop"], enabled: true),
+                      patterns: ["com.docker", "docker"], excludes: ["Docker Desktop"], enabled: true, detect: ["/Applications/Docker.app", "/usr/local/bin/docker", "~/.docker"]),
         ],
         devServerCommands: [
             "node", "python", "ruby", "php", "deno", "bun", "java",
@@ -87,13 +96,24 @@ struct Rules: Codable {
             return .default
         }
         do {
-            return try JSONDecoder().decode(Rules.self, from: data)
+            var loaded = try JSONDecoder().decode(Rules.self, from: data)
+            loaded.mergeNewAgents()
+            return loaded
         } catch {
             // 用户改坏了：保留坏文件备份，回退默认，不覆盖他的编辑
             let backup = url.deletingLastPathComponent()
                 .appendingPathComponent("rules.broken-\(Int(Date().timeIntervalSince1970)).json")
             try? FileManager.default.copyItem(at: url, to: backup)
             return .default
+        }
+    }
+
+    /// 内置规则表新增了 agent（比如 Pi）时，老用户的 rules.json 里没有它。
+    /// 按 id 补进去，用户自己的条目和开关状态一律不动。
+    mutating func mergeNewAgents() {
+        let known = Set(agents.map(\.id))
+        for d in Rules.default.agents where !known.contains(d.id) {
+            agents.append(d)
         }
     }
 
