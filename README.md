@@ -86,6 +86,18 @@ open /Applications/HotPot.app
 | 恢复 | `taskpolicy -B -p PID` |
 | 存储 | SQLite 本地采样，原始 48 小时、小时聚合 90 天 |
 
+### 降温到底改了什么
+
+不是 `SIGSTOP`，不是 `nice`，进程一直在跑。改的是**调度级别**：把线程的 QoS 从 User Initiated 降到 Background。系统收到这个信号后做三件事——优先排到能效核、时间片给得更少、允许把定时器唤醒合并。
+
+核心在于第一条。Apple Silicon 的 P 核单核功耗是 E 核的好几倍，但快不到那么多倍。同一批线程挪到 E 核，单位时间发热掉一半以上，代价是完成时间变长——对 agent 这种「等结果就行」的任务几乎无感。
+
+<p align="center"><img src="docs/ui/cooling.png" width="820" alt="降温前后核心占用与温度曲线"></p>
+
+<p align="center"><sub>8 个 CPU-bound 线程超订 6 个能效核，本机实测。完整方法与数据见 <a href="docs/POC-REPORT.md">POC-REPORT</a></sub></p>
+
+注意这是 advisory（建议性）调度，不是硬亲和：E 核排满时线程仍会溢出到 P 核。所以效果取决于系统愿不愿意把 E 核留给你——正常负载下它会。
+
 看板的采样策略和取舍记录在 [docs/DASHBOARD.md](docs/DASHBOARD.md)。
 
 ## 已知限制

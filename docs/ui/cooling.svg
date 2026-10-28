@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="640" viewBox="0 0 1000 640">
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8A230" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#E8A230" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1000" height="640" fill="#0C0C0D"/>
+
+  <text x="56" y="52" font-size="23" font-weight="600" fill="#EDE8E0"
+        font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif">同一批线程，只是换了个地方跑</text>
+  <text x="56" y="78" font-size="14" fill="#7E7970"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace">taskpolicy -b -p PID   QoS: User Initiated → Background</text>
+
+  <!-- 行 1：满载 -->
+  <rect x="48" y="100" width="904" height="130" rx="10" fill="#141416" stroke="#26262A"/>
+  <text x="76" y="140" font-size="15" fill="#7E7970" font-family="-apple-system, sans-serif">满载时</text>
+  <text x="76" y="184" font-size="34" fill="#EDE8E0"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace">70.6°C</text>
+  <text x="76" y="210" font-size="12.5" fill="#5E5A53" font-family="-apple-system, sans-serif">10 核全忙 · 风扇起飞</text>
+
+  <text x="330" y="134" font-size="12" fill="#7E7970" letter-spacing="0.6" font-family="-apple-system, sans-serif">性能核 ×4</text>
+  <text x="590" y="134" font-size="12" fill="#7E7970" letter-spacing="0.6" font-family="-apple-system, sans-serif">能效核 ×6</text>
+  <rect x="330" y="150" width="46" height="46" rx="6" fill="#E8A230"/>
+  <rect x="384" y="150" width="46" height="46" rx="6" fill="#E8A230"/>
+  <rect x="438" y="150" width="46" height="46" rx="6" fill="#E8A230"/>
+  <rect x="492" y="150" width="46" height="46" rx="6" fill="#E8A230"/>
+  <rect x="590" y="156" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="636" y="156" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="682" y="156" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="728" y="156" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="774" y="156" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="820" y="156" width="38" height="38" rx="5" fill="#E8A230"/>
+
+  <!-- 行 2：降 QoS 后 -->
+  <rect x="48" y="246" width="904" height="130" rx="10" fill="#141416" stroke="#26262A"/>
+  <text x="76" y="286" font-size="15" fill="#7E7970" font-family="-apple-system, sans-serif">降 QoS 后</text>
+  <text x="76" y="330" font-size="34" fill="#EDE8E0"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace">44.9°C</text>
+  <text x="76" y="356" font-size="12.5" fill="#5E5A53" font-family="-apple-system, sans-serif">P 核空转 · 任务照跑</text>
+
+  <text x="330" y="280" font-size="12" fill="#7E7970" letter-spacing="0.6" font-family="-apple-system, sans-serif">性能核 ×4</text>
+  <text x="590" y="280" font-size="12" fill="#7E7970" letter-spacing="0.6" font-family="-apple-system, sans-serif">能效核 ×6</text>
+  <rect x="330" y="296" width="46" height="46" rx="6" fill="#2A2A2E"/>
+  <rect x="384" y="296" width="46" height="46" rx="6" fill="#2A2A2E"/>
+  <rect x="438" y="296" width="46" height="46" rx="6" fill="#2A2A2E"/>
+  <rect x="492" y="296" width="46" height="46" rx="6" fill="#2A2A2E"/>
+  <rect x="590" y="302" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="636" y="302" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="682" y="302" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="728" y="302" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="774" y="302" width="38" height="38" rx="5" fill="#E8A230"/>
+  <rect x="820" y="302" width="38" height="38" rx="5" fill="#E8A230"/>
+
+  <!-- 温度曲线 -->
+  <text x="56" y="428" font-size="13" fill="#7E7970" letter-spacing="0.6" font-family="-apple-system, sans-serif">芯片最高温 · 本机实测</text>
+
+  <line x1="56" y1="470" x2="900" y2="470" stroke="#222226"/>
+  <line x1="56" y1="540" x2="900" y2="540" stroke="#222226"/>
+  <text x="944" y="474" font-size="11" fill="#4E4A44" text-anchor="end" font-family="ui-monospace, monospace">70.6°C</text>
+  <text x="944" y="544" font-size="11" fill="#4E4A44" text-anchor="end" font-family="ui-monospace, monospace">44.9°C</text>
+
+  <path d="M56,549 L300,470 L620,540 L900,470 L900,596 L56,596 Z" fill="url(#fade)"/>
+  <polyline points="56,549 300,470 620,540 900,470" fill="none" stroke="#E8A230" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="300" cy="470" r="5" fill="#0C0C0D" stroke="#E8A230" stroke-width="2.5"/>
+  <circle cx="620" cy="540" r="5" fill="#0C0C0D" stroke="#E8A230" stroke-width="2.5"/>
+  <line x1="620" y1="540" x2="620" y2="478" stroke="#E8A230" stroke-opacity="0.4" stroke-dasharray="3 4"/>
+  <text x="632" y="512" font-size="13" fill="#E8A230" font-family="ui-monospace, monospace">-25.7°C</text>
+
+  <text x="56" y="618" font-size="12" fill="#5E5A53" font-family="-apple-system, sans-serif">空闲 41.6°C</text>
+  <text x="300" y="618" font-size="12" fill="#7E7970" text-anchor="middle" font-family="-apple-system, sans-serif">满载 40 秒</text>
+  <text x="620" y="618" font-size="12" fill="#7E7970" text-anchor="middle" font-family="-apple-system, sans-serif">降 QoS 40 秒</text>
+  <text x="900" y="618" font-size="12" fill="#5E5A53" text-anchor="end" font-family="-apple-system, sans-serif">恢复 20 秒 · 任务全程存活</text>
+</svg>
