@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-<img src="docs/brand/logo-mark.svg" width="56" alt="Manatee">
+<img src="docs/brand/icon-256.png" width="72" alt="Manatee">
 
 [![Release](https://img.shields.io/github/v/release/luogao/manatee?color=E8A230)](https://github.com/luogao/manatee/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
