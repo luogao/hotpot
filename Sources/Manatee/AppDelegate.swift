@@ -47,6 +47,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         RunLoop.main.add(titleTimer!, forMode: .common)
 
+        // 查更新：一天一次，失败静默。延迟 8 秒，别跟首屏抢 IO。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+            Updater.shared.checkIfDue()
+        }
+
         // POC 用：启动后自动展开面板，方便截图/验收
         if CommandLine.arguments.contains("--demo") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in

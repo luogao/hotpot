@@ -75,6 +75,22 @@ if argv.contains("--e2e") {
     exit(E2E.run())
 }
 
+// 只跑一次联网检查，打印结果后退出（排查「点了检查更新没反应」用）
+if argv.contains("--update-check") {
+    // 顶层代码本身就跑在主线程，只是编译器不认它属于 MainActor。
+    // 不能再用 DispatchQueue.main.sync——主线程同步等主队列会直接 trap。
+    var rc: Int32 = 1
+    MainActor.assumeIsolated { rc = UpdateSelfTest.liveCheck() }
+    exit(rc)
+}
+
+// 真跑更新链路：--update-selftest <zip 路径> [目标目录]
+// 解包 → 校验 → 在隔离目录里做一次完整的「替换 + 回滚」演练，不碰真实安装。
+if let i = argv.firstIndex(of: "--update-selftest"), argv.count > i + 1 {
+    exit(UpdateSelfTest.run(zip: argv[i + 1],
+                            targetDir: argv.count > i + 2 ? argv[i + 2] : nil))
+}
+
 if argv.contains("--seed-metrics") {
     // 造 24 小时假数据，给截图/验证用（配合 MANATEE_METRICS_DB 指向临时库）
     let store = MetricsStore.shared
@@ -177,6 +193,24 @@ if argv.contains("--render") {
     }
     let out = (argv.first(where: { $0.hasPrefix("--out=") })?.dropFirst(6)).map(String.init)
         ?? "/Users/gaogao/Documents/Hermes/manatee/poc-panel.png"
+    // 截图用：--update=available|downloading|installing|uptodate，伪造更新状态
+    let updateArg = argv.first(where: { $0.hasPrefix("--update=") })?.dropFirst(9)
+    if let updateArg {
+        let fake = ReleaseInfo(
+            version: "0.7.0",
+            notes: "资源看板支持按 agent 分组；菜单栏图标在高负载时更醒目；修复了长时间运行后内存缓慢增长的问题。",
+            zipURL: URL(string: "https://example.com/Manatee-0.7.0.zip")!,
+            pageURL: URL(string: "https://github.com/luogao/manatee/releases")!)
+        MainActor.assumeIsolated {
+            switch updateArg {
+            case "available":   Updater.shared.debugSet(.available("0.7.0"), remote: fake)
+            case "downloading": Updater.shared.debugSet(.downloading(0.42), remote: fake)
+            case "installing":  Updater.shared.debugSet(.installing, remote: fake)
+            case "uptodate":    Updater.shared.debugSet(.upToDate, remote: fake)
+            default:            break
+            }
+        }
+    }
     let renderSettings = argv.contains("--settings")
     let renderDashboard = argv.contains("--dashboard")
     MainActor.assumeIsolated {
@@ -193,7 +227,16 @@ if argv.contains("--render") {
         let useHost = argv.contains("--snapshot")
         if useHost {
             let host = NSHostingView(rootView: view)
-            let win = (renderSettings || renderDashboard) ? NSSize(width: 640, height: 760) : NSSize(width: 340, height: 580)
+            var win = (renderSettings || renderDashboard) ? NSSize(width: 640, height: 760) : NSSize(width: 340, height: 580)
+            // --size=640x1600：出整页长图（滚动区内容全摊开），方便验收看不见的分区
+            if let f = argv.first(where: { $0.hasPrefix("--size=") }) {
+                let parts = f.dropFirst(7).split(separator: "x")
+                if parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]) {
+                    win = NSSize(width: w, height: h)
+                    // 设置页自身写死了高度，长图模式要同步告诉它
+                    UserDefaults.standard.set(h, forKey: "render.windowHeight")
+                }
+            }
             host.frame = NSRect(origin: .zero, size: win)
             host.appearance = NSAppearance(named: .darkAqua)
             host.layoutSubtreeIfNeeded()

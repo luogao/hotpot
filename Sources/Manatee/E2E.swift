@@ -47,6 +47,33 @@ enum E2E {
                   "640×760")
         }
 
+        // 6) 在线更新：版本比较 + release 解析 + 包校验
+        check("版本比较 0.7.0 > 0.6.5", Semver.isNewer("0.7.0", than: "0.6.5"))
+        check("版本比较 0.6.10 > 0.6.9", Semver.isNewer("0.6.10", than: "0.6.9"))
+        check("版本比较 同版本不更新", !Semver.isNewer("0.6.5", than: "0.6.5"))
+        check("版本比较 旧版不更新", !Semver.isNewer("0.5.9", than: "0.6.5"))
+        check("版本比较 v 前缀", Semver.isNewer("v0.8.0", than: "0.6.5"))
+
+        let sample = """
+        {"tag_name":"v0.9.0","body":"修了什么","assets":[
+          {"name":"notes.txt","browser_download_url":"https://example.com/a.txt"},
+          {"name":"Manatee-0.9.0.zip","browser_download_url":"https://example.com/Manatee-0.9.0.zip"}]}
+        """.data(using: .utf8)!
+        let rel = Updater.parse(sample)
+        check("release 解析版本", rel?.version == "0.9.0", rel?.version ?? "nil")
+        check("release 解析 zip", rel?.zipURL?.lastPathComponent == "Manatee-0.9.0.zip",
+              rel?.zipURL?.lastPathComponent ?? "nil")
+        check("release 坏 JSON 不崩", Updater.parse(Data("{}".utf8)) == nil)
+
+        // 包校验：拿当前安装的 app 当正样本，改 id 当负样本
+        let selfApp = Bundle.main.bundleURL
+        var badBundle = false
+        do { try Updater.validate(selfApp, expecting: AppInfo.version) } catch { badBundle = true }
+        check("包校验 正样本通过", !badBundle, selfApp.lastPathComponent)
+        check("包校验 拒绝低版本",
+              { do { try Updater.validate(selfApp, expecting: "99.0.0"); return false }
+                catch { return true } }())
+
         print(failures == 0 ? "e2e passed" : "e2e failed: \(failures) 项")
         return failures == 0 ? 0 : 1
     }

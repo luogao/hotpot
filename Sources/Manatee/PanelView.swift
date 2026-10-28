@@ -466,6 +466,7 @@ struct PanelView: View {
                     .tracking(0.2)
                     .foregroundStyle(Theme.ink2)
                 Spacer(minLength: 0)
+                UpdateBanner()
                 Button {
                     NotificationCenter.default.post(name: .hotPotOpenDashboard, object: nil)
                 } label: {

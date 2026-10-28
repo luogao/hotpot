@@ -29,13 +29,19 @@ struct SettingsView: View {
                     rail(proxy)
                     mainScroll(proxy)
                 }
-                .frame(width: 640, height: 726, alignment: .top)
+                .frame(width: 640, height: max(120, windowHeight - 34), alignment: .top)
                 .clipped()
                 footer
             }
         }
-        .frame(width: 640, height: 760)
+        .frame(width: 640, height: windowHeight)
         .background(Theme.bg)
+    }
+
+    /// 默认 760；截图/长图模式可传入更大的高度，把下面几个分区一起出图。
+    private var windowHeight: CGFloat {
+        let h = CGFloat(UserDefaults.standard.double(forKey: "render.windowHeight"))
+        return h > 200 ? h : 760
     }
 
     // MARK: - 左栏（可点跳转）
@@ -63,9 +69,14 @@ struct SettingsView: View {
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(2, anchor: .top) }
                 }
                 RailItem(n: "03", label: "Agent", count: "\(rules.agents.count)",
-                         selected: selected == 3, isLast: true) {
+                         selected: selected == 3) {
                     selected = 3
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(3, anchor: .top) }
+                }
+                RailItem(n: "04", label: L10n.t("版本", "Version"), count: "",
+                         selected: selected == 4, isLast: true) {
+                    selected = 4
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(4, anchor: .top) }
                 }
             }
             .padding(.top, 20)
@@ -123,6 +134,7 @@ struct SettingsView: View {
             generalSection.id(1)
             alertSection.id(2)
             agentsSection.id(3)
+            UpdateSection().id(4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -431,7 +443,7 @@ private struct RailLink: View {
     }
 }
 
-private struct SectionHead: View {
+struct SectionHead: View {
     let n: String
     let title: String
     var trailing: String? = nil
