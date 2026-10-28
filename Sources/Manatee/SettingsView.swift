@@ -5,6 +5,7 @@ import ServiceManagement
 /// C 方案「三栏参数台」：左栏导航 + 右侧参数区，深色，和主面板同源。
 /// 640 × 760（内容区）：字号按桌面阅读距离放大，左栏三项可点、跳转到对应分区。
 struct SettingsView: View {
+    @ObservedObject private var lang = LangStore.shared
     @State private var rules: Rules
     @State private var launchAtLogin: Bool
     @State private var dirty = false
@@ -41,7 +42,7 @@ struct SettingsView: View {
 
     private func rail(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("HOTPOT")
+            Text(AppInfo.name.uppercased())
                 .font(.system(size: 10, design: .monospaced))
                 .tracking(1.6)
                 .foregroundStyle(Theme.ink3.opacity(0.75))
@@ -145,6 +146,23 @@ struct SettingsView: View {
                     get: { launchAtLogin },
                     set: { applyLaunchAtLogin($0) }
                 ))
+            }
+            .frame(height: 58)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
+            }
+
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.t("语言", "Language"))
+                        .font(.system(size: 13.5))
+                        .foregroundStyle(Theme.ink)
+                    Text(L10n.t("界面文案语言，重启后窗口尺寸自适应", "Interface language. Restart to resize windows."))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.ink2)
+                }
+                Spacer(minLength: 0)
+                LangPicker()
             }
             .frame(height: 58)
             .overlay(alignment: .bottom) {
@@ -534,6 +552,34 @@ struct PillToggle: View {
 }
 
 // MARK: - 窗口
+
+/// 语言选择：三段胶囊，和整体风格一致（不用原生 Picker，避免系统灰底）
+private struct LangPicker: View {
+    @ObservedObject private var store = LangStore.shared
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(AppLang.allCases) { lang in
+                let on = store.current == lang
+                Button {
+                    store.current = lang
+                } label: {
+                    Text(lang == .system ? L10n.t("自动", "Auto") : lang.shortLabel)
+                        .font(.system(size: 11, weight: on ? .medium : .regular))
+                        .foregroundStyle(on ? Theme.accent : Theme.ink2)
+                        .padding(.horizontal, 9)
+                        .frame(height: 24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(on ? Theme.accent.opacity(0.14) : Color.clear)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
 
 final class SettingsWindowController {
     private var window: NSWindow?

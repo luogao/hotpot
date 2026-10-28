@@ -1,143 +1,144 @@
 # Manatee
 
+[English](README.md) · [简体中文](README.zh-CN.md)
+
 [![Release](https://img.shields.io/github/v/release/luogao/manatee?color=E8A230)](https://github.com/luogao/manatee/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Platform](https://img.shields.io/badge/macOS-13%2B%20Apple%20Silicon-black)](#安装)
+[![Platform](https://img.shields.io/badge/macOS-13%2B%20Apple%20Silicon-black)](#install)
 
-**别把火关掉，把火调小。**
+**Turn the heat down, don't put out the fire.**
 
-几个 AI agent 一起跑，风扇开始起飞。你不需要「谁在占用 CPU」这种含糊答案 —— 你要知道是哪个、跑了多久、还能不能救。
+Run a few AI agents at once and the fans take off. You don't need the vague answer "something is using CPU" — you need to know *which* agent, *for how long*, and whether it can be saved.
 
-Manatee 住在菜单栏，把每个 agent 的整棵进程树合成一行，标清楚烫了多久，然后把它挪到能效核：**任务照跑，只是不抢满所有核心**。
+Manatee lives in your menu bar. It folds each agent's entire process tree into one row, flags how long it has been running hot, and moves it to the efficiency cores: **the task keeps running, it just stops hogging every core.**
 
-> 名字来自海牛 —— 一天要吃自己体重十分之一的水草，消化极慢，从不冲刺。
+> The name comes from the manatee — it eats a tenth of its body weight in seagrass every day, digests extremely slowly, and never sprints.
 
 <p align="center">
-  <img src="docs/ui/manatee-panel.png" height="340" alt="菜单栏面板">&nbsp;&nbsp;
-  <img src="docs/ui/manatee-settings.png" height="340" alt="设置窗口">&nbsp;&nbsp;
-  <img src="docs/ui/dashboard.png" height="340" alt="资源看板">
+  <img src="docs/ui/en-panel.png" height="340" alt="Menu bar panel">&nbsp;&nbsp;
+  <img src="docs/ui/en-settings.png" height="340" alt="Settings window">&nbsp;&nbsp;
+  <img src="docs/ui/en-dashboard.png" height="340" alt="Resource dashboard">
 </p>
 
-<p align="center"><sub>菜单栏面板 · 设置窗口 · 资源看板</sub></p>
+<p align="center"><sub>Menu bar panel · Settings · Resource dashboard</sub></p>
 
-## 功能
+## Features
 
-- **实时芯片温度** — 菜单栏直接显示 `52°`，按温度变色
-- **agent 会话归并** — 一个 agent 的 node/npm/子进程合成一行，不刷屏
-- **一键降温** — 把会话降到能效核，进程继续跑，只是慢一点；随时恢复
-- **连续满载预警** — 某个会话连续 5 分钟超 200% CPU，行内标红并显示持续时长
-- **端口监控** — 谁占着 `:5173`；终端关了进程还在的标「残留」，可一键关掉
-- **资源看板** — 1h/24h/7d/30d 窗口，看谁累计吃掉最多 CPU、温度什么时候飙起来的
-- **广泛的 agent 支持** — Claude Code / Codex / Cursor / Gemini CLI / Aider / Copilot CLI / Pi / Ollama / LM Studio / Xcode Build / ffmpeg / Docker
+- **Live chip temperature** — the menu bar shows `52°` and changes color with the heat
+- **Sessions, not processes** — an agent's node/npm/child processes collapse into one row
+- **One-click cooling** — move a session to efficiency cores; it keeps running, just slower. Restore anytime
+- **Sustained-load alerts** — a session above 200% CPU for 5 minutes gets flagged inline with how long it has been hot
+- **Port monitor** — who is holding `:5173`; servers whose terminal is gone get marked "stray" and can be killed in one click
+- **Resource dashboard** — 1h / 24h / 7d / 30d windows: who burned the most CPU, when the temperature spiked
+- **Broad agent support** — Claude Code / Codex / Cursor / Gemini CLI / Aider / Copilot CLI / Pi / Ollama / LM Studio / Xcode Build / ffmpeg / Docker
 
-## 安装
+## Install
 
-**Homebrew（推荐）**
+**Homebrew (recommended)**
 
 ```bash
 brew install --cask luogao/tap/manatee
 ```
 
-一条命令搞定，cask 里已经去掉了 quarantine，装完直接能用。
+One command — the cask strips the quarantine flag, so it works right after install.
 
-**下载发行版**
+**Download**
 
-到 [Releases](https://github.com/luogao/manatee/releases) 下载 `Manatee-<version>.zip`，解压拖进 `/Applications`。
+Grab `Manatee-<version>.zip` from [Releases](https://github.com/luogao/manatee/releases) and drag it into `/Applications`.
 
-> 本包是 ad-hoc 签名，首次打开可能被 Gatekeeper 拦。右键 →「打开」，或者：
+> The build is ad-hoc signed, so Gatekeeper may block the first launch. Right-click → Open, or:
 > ```bash
 > xattr -d com.apple.quarantine /Applications/Manatee.app
 > ```
 
-**从源码**
+**From source**
 
 ```bash
 git clone https://github.com/luogao/manatee.git
 cd manatee
-./scripts/bundle.sh          # 编译 + 打包 + ad-hoc 签名
+./scripts/bundle.sh          # build + bundle + ad-hoc sign
 cp -R build/Manatee.app /Applications/
 open /Applications/Manatee.app
 ```
 
-> 别用 `brew install --cask <raw URL>` —— 新版 Homebrew 不支持从 URL 装 cask，
-> 会把 URL 当 cask 名去查，报 `No Cask with this name exists`。
+> Don't use `brew install --cask <raw URL>` — recent Homebrew treats the URL as a cask name and fails with `No Cask with this name exists`.
 
-## 使用
+## Usage
 
-1. 启动后菜单栏出现 `52°`，没有 Dock 图标
-2. 点一下展开面板，看到当前所有 agent 会话、CPU、子进程
-3. 某一行的数字太吓人，点它右边的降温按钮；想全降就点底部的「全部降温」
-4. 忙完了点「恢复」，进程回到正常调度
+1. After launch, `52°` appears in the menu bar. No Dock icon.
+2. Click it to expand the panel: every agent session, its CPU, and its child processes.
+3. If a number looks alarming, click the cool button on that row. Or hit "Cool all" at the bottom.
+4. When you're done, click "Restore" and the processes go back to normal scheduling.
 
-右键菜单栏图标还有：资源看板、偏好设置、开机自启（默认关）、退出。
+Right-click the menu bar icon for the dashboard, preferences, launch-at-login (off by default), and quit.
 
-## 配置
+## Configuration
 
-配置文件在 `~/Library/Application Support/Manatee/rules.json`，首次启动生成。
+Settings live in `~/Library/Application Support/Manatee/rules.json`, generated on first launch.
 
-可以加自己的 agent、白名单端口、改预警阈值。**改坏了不会崩** —— 会自动备份原文件并回退默认规则。
+Add your own agents, whitelist ports, change alert thresholds. **Breaking it doesn't crash the app** — the bad file is backed up and the defaults are restored.
 
-## 原理
+## How it works
 
-| 模块 | 做法 |
-|------|------|
-| 温度 | `IOHIDEventSystemClient`（私有 API，免 sudo） |
-| 进程 | `libproc` 全表扫描 + `proc_pid_rusage` 差分算 CPU% |
-| 归因 | argv 指纹 + ppid 链 + pgid 兜底 |
-| 降温 | `taskpolicy -b -p PID` 降到 Background QoS（只跑能效核） |
-| 恢复 | `taskpolicy -B -p PID` |
-| 存储 | SQLite 本地采样，原始 48 小时、小时聚合 90 天 |
+| Part | Approach |
+|------|----------|
+| Temperature | `IOHIDEventSystemClient` (private API, no sudo) |
+| Processes | Full-table `libproc` scan + `proc_pid_rusage` deltas for CPU% |
+| Attribution | argv fingerprints + ppid chain + pgid fallback |
+| Cooling | `taskpolicy -b -p PID` → Background QoS (efficiency cores only) |
+| Restore | `taskpolicy -B -p PID` |
+| Storage | Local SQLite sampling: 48h raw, 90d hourly aggregates |
 
-### 降温到底改了什么
+### What cooling actually changes
 
-不是 `SIGSTOP`，不是 `nice`，进程一直在跑。改的是**调度级别**：把线程的 QoS 从 User Initiated 降到 Background。系统收到这个信号后做三件事——优先排到能效核、时间片给得更少、允许把定时器唤醒合并。
+It is not `SIGSTOP`, it is not `nice` — the process keeps running. What changes is the **scheduling class**: the thread's QoS drops from User Initiated to Background. The system reacts in three ways: prefer efficiency cores, hand out smaller time slices, and coalesce timer wakeups.
 
-核心在于第一条。Apple Silicon 的 P 核单核功耗是 E 核的好几倍，但快不到那么多倍。同一批线程挪到 E 核，单位时间发热掉一半以上，代价是完成时间变长——对 agent 这种「等结果就行」的任务几乎无感。
+The first one matters most. An Apple Silicon P-core burns several times the power of an E-core without being several times faster. Move the same threads to E-cores and heat output drops by more than half; the cost is a longer wall-clock time — which for "I just need the result" agent work is barely noticeable.
 
-<p align="center"><img src="docs/ui/cooling.png" width="820" alt="降温前后核心占用与温度曲线"></p>
+<p align="center"><img src="docs/ui/cooling.png" width="820" alt="Core usage and temperature before/after cooling"></p>
 
-<p align="center"><sub>8 个 CPU-bound 线程超订 6 个能效核，本机实测。完整方法与数据见 <a href="docs/POC-REPORT.md">POC-REPORT</a></sub></p>
+<p align="center"><sub>8 CPU-bound threads oversubscribing 6 efficiency cores, measured locally. Full method and data in <a href="docs/POC-REPORT.md">POC-REPORT</a></sub></p>
 
-注意这是 advisory（建议性）调度，不是硬亲和：E 核排满时线程仍会溢出到 P 核。所以效果取决于系统愿不愿意把 E 核留给你——正常负载下它会。
+Note this is advisory scheduling, not hard affinity: when the E-cores fill up, threads still spill over to P-cores. So the effect depends on the system being willing to keep E-cores for you — under normal load, it is.
 
-看板的采样策略和取舍记录在 [docs/DASHBOARD.md](docs/DASHBOARD.md)。
+The dashboard's sampling strategy and the trade-offs behind it are documented in [docs/DASHBOARD.md](docs/DASHBOARD.md).
 
-## 已知限制
+## Requirements & limitations
 
-- 用了私有 API，不能上 Mac App Store
-- 只能降温同用户的进程（sudo 起的 docker / root 进程不行）
-- 刘海形态需要带刘海的机器验证；无刘海时自动用菜单栏
-- 目前只支持 Apple Silicon / macOS 13+
+- Apple Silicon, macOS 13+
+- Uses a private API, so it can't ship on the Mac App Store
+- Can only cool processes owned by the same user (no sudo-owned docker/root processes)
+- The notch layout needs a notched Mac to verify; without a notch it falls back to the menu bar
 
-## 开发
-
-```bash
-./scripts/check.sh      # 编译 + 单测 + e2e，提交前跑这个
-swift build -c release  # 出可执行文件
-```
-
-测试：`Tests/ManateeTests/` 覆盖 agent 识别规则、会话聚合、看板存储；`Manatee --e2e` 是无窗口无权限的启动链路自检。CI 跑同样的三步。
-
-常用命令行工具：
+## Development
 
 ```bash
-.build/debug/Manatee --dump        # 打印温度 + agent 会话 + Top CPU
-.build/debug/Manatee --cool-test   # 对最烫的 agent 降温 25s 再恢复，打印温度变化
-.build/debug/Manatee --render      # 离屏渲染面板（可加 --alert / --dev 注入状态）
-.build/release/Manatee --ports     # 只列残留的开发服务器
-.build/release/Manatee --bench     # 扫描/读温耗时基线
-.build/debug/Manatee --demo        # 启动后自动展开面板
+./scripts/check.sh      # build + unit tests + e2e — run before committing
+swift build -c release  # produce the binary
 ```
 
-更多文档：
+Tests: `Tests/ManateeTests/` covers agent matching rules, session aggregation, and dashboard storage. `Manatee --e2e` is a windowless, permission-free startup smoke test. CI runs the same three steps.
 
-- 需求与设计：[PRD.md](PRD.md)
-- 实测数据与实验方法：[docs/POC-REPORT.md](docs/POC-REPORT.md)
-- 给协作者 / AI agent 的说明：[AGENTS.md](AGENTS.md)
+Handy CLI flags:
 
-## 隐私
+```bash
+.build/debug/Manatee --dump        # temperature + agent sessions + top CPU
+.build/debug/Manatee --cool-test   # cool the hottest agent for 25s, print the delta
+.build/debug/Manatee --render      # offscreen render of the panel (--alert / --dev inject state)
+.build/release/Manatee --ports     # list stray dev servers only
+.build/release/Manatee --bench     # scan/temperature baseline timings
+.build/debug/Manatee --demo        # open the panel on launch
+```
 
-纯本地运行。不联网、不上报、不需要账号。看板数据只写在你自己的硬盘上。
+More docs:
+
+- Product requirements and design: [PRD.md](PRD.md)
+- Measurements and method: [docs/POC-REPORT.md](docs/POC-REPORT.md)
+- Notes for contributors / AI agents: [AGENTS.md](AGENTS.md)
+
+## Privacy
+
+Fully local. No network calls, no telemetry, no account. Dashboard data stays on your disk.
 
 ## License
 
@@ -145,4 +146,4 @@ swift build -c release  # 出可执行文件
 
 ---
 
-灵感来自 [WhoIsCooking](https://whoiscooking.site/)，独立实现。
+Inspired by [WhoIsCooking](https://whoiscooking.site/), independently implemented.

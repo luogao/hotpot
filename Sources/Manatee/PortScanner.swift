@@ -35,8 +35,8 @@ struct DevService: Identifiable, Equatable {
 
     var uptimeText: String {
         let h = Int(uptime) / 3600
-        if h >= 1 { return "\(h) 小时" }
-        return "\(Int(uptime) / 60) 分钟"
+        if h >= 1 { return "\(h) " + L10n.t("小时", "h") }
+        return "\(Int(uptime) / 60) " + L10n.t("分钟", "min")
     }
 }
 

@@ -336,7 +336,7 @@ struct DashboardView: View {
 
     /// 端口按 60 秒一次扫描，样本数近似分钟数
     private func approxDuration(_ samples: Int) -> String {
-        samples < 60 ? "\(samples) 分钟" : String(format: "%.1f 小时", Double(samples) / 60)
+        samples < 60 ? "\(samples) " + L10n.t("分钟", "min") : String(format: "%.1f", Double(samples) / 60) + " " + L10n.t("小时", "h")
     }
 
     private func symbolFor(_ id: String) -> String {
@@ -416,11 +416,12 @@ private struct TempChart: View {
     }
 
     private var tickLabels: [String] {
+        let now = L10n.t("现在", "now")
         switch span {
-        case .h1: return ["-60m", "-40m", "-20m", "现在"]
-        case .h24: return ["-24h", "-16h", "-8h", "现在"]
-        case .d7: return ["-7d", "-5d", "-3d", "现在"]
-        case .d30: return ["-30d", "-20d", "-10d", "现在"]
+        case .h1: return ["-60m", "-40m", "-20m", now]
+        case .h24: return ["-24h", "-16h", "-8h", now]
+        case .d7: return ["-7d", "-5d", "-3d", now]
+        case .d30: return ["-30d", "-20d", "-10d", now]
         }
     }
 }

@@ -124,7 +124,7 @@ final class AppModel: ObservableObject {
 
                     self.coolLatecomers(sessions)
                 }
-                self.lastError = self.temp == nil ? "温度传感器不可用" : nil
+                self.lastError = self.temp == nil ? L10n.t("温度传感器不可用", "Temperature sensor unavailable") : nil
             }
         }
     }

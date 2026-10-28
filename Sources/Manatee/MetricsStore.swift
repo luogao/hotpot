@@ -27,7 +27,7 @@ final class MetricsStore {
     }
 
     private static func defaultPath() -> String {
-        if let override = ProcessInfo.processInfo.environment["HOTPOT_METRICS_DB"] { return override }
+        if let override = ProcessInfo.processInfo.environment["MANATEE_METRICS_DB"] { return override }
         return (AppInfo.supportPath as NSString).appendingPathComponent("metrics.sqlite")
     }
 

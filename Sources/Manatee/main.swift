@@ -76,7 +76,7 @@ if argv.contains("--e2e") {
 }
 
 if argv.contains("--seed-metrics") {
-    // 造 24 小时假数据，给截图/验证用（配合 HOTPOT_METRICS_DB 指向临时库）
+    // 造 24 小时假数据，给截图/验证用（配合 MANATEE_METRICS_DB 指向临时库）
     let store = MetricsStore.shared
     let now = Int(Date().timeIntervalSince1970)
     for i in stride(from: 24 * 3600, through: 0, by: -300) {
@@ -107,6 +107,11 @@ if argv.contains("--seed-metrics") {
 
 if argv.contains("--render") {
     // 离屏渲染面板 PNG（不需要屏幕录制权限）
+    // --lang=en|zh 临时覆盖界面语言，用来出两版截图
+    if let f = argv.first(where: { $0.hasPrefix("--lang=") }) {
+        let v = String(f.dropFirst(7))
+        LangStore.shared.current = (v == "zh") ? .zh : .en
+    }
     let model = AppModel()
     model.loadSync()
     // 演示用状态注入：--fake=91 覆盖温度，--empty 清空列表，--cooled 把第一行标为已降温
