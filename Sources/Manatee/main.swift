@@ -153,6 +153,28 @@ if argv.contains("--render") {
     if argv.contains("--cooled"), let first = model.sessions.first {
         model.cooled = Set(first.pids)
     }
+    // 官网/README 用图：造一个「一个会话 340%、已连续满载 12 分钟」的状态，
+    // 和落地页第二屏的对照文案必须一致，别用两条不同的假数据
+    if argv.contains("--demo") {
+        model.temperature = 43
+        if model.sensorName.isEmpty { model.sensorName = "PMU tdie12" }
+        let seed = model.sessions.first
+        let def = seed?.def ?? AgentRegistry.all.first!
+        var hot = seed ?? AgentSession(def: def, rootPid: 77245, cpuPercent: 340, pids: [77245],
+                                       busyChildren: [("node", 340)], cooled: false, hasOtherUid: false)
+        hot.cpuPercent = 340
+        hot.busyChildren = [("node", 340)]
+        hot.pids = (0..<14).map { pid_t(77245 + $0) }
+        hot.cooled = false
+        let idle = AgentSession(def: def, rootPid: 6086, cpuPercent: 0, pids: [6086],
+                                busyChildren: [], cooled: false, hasOtherUid: false)
+        let codex = AgentSession(def: AgentRegistry.all.first { $0.id == "codex" } ?? def,
+                                 rootPid: 78120, cpuPercent: 62, pids: [78120, 78121],
+                                 busyChildren: [("node", 62)], cooled: false, hasOtherUid: false)
+        model.sessions = [hot, codex, idle]
+        model.alerts = [hot.rootPid: 720]
+        model.processCount = 869
+    }
     let out = (argv.first(where: { $0.hasPrefix("--out=") })?.dropFirst(6)).map(String.init)
         ?? "/Users/gaogao/Documents/Hermes/manatee/poc-panel.png"
     let renderSettings = argv.contains("--settings")
