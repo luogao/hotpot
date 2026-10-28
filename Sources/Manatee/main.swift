@@ -149,7 +149,7 @@ if argv.contains("--render") {
         model.cooled = Set(first.pids)
     }
     let out = (argv.first(where: { $0.hasPrefix("--out=") })?.dropFirst(6)).map(String.init)
-        ?? "/Users/gaogao/Documents/Hermes/whoscooking-oss/poc-panel.png"
+        ?? "/Users/gaogao/Documents/Hermes/manatee/poc-panel.png"
     let renderSettings = argv.contains("--settings")
     let renderDashboard = argv.contains("--dashboard")
     MainActor.assumeIsolated {
