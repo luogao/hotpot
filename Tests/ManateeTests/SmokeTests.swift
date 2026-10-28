@@ -1,5 +1,5 @@
 import Testing
-@testable import HotPot
+@testable import Manatee
 
 @Test func 冒烟() {
     #expect(true)

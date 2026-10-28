@@ -1,7 +1,7 @@
 import Foundation
 
 /// 用户可编辑的规则表。第一次启动会在
-/// `~/Library/Application Support/HotPot/rules.json` 写出一份，之后以文件为准。
+/// `~/Library/Application Support/<AppName>/rules.json` 写出一份，之后以文件为准。
 /// 文件缺失或解析失败时回退到内置默认值，不让用户改坏 JSON 导致 app 起不来。
 struct AgentRule: Codable {
     var id: String
@@ -31,11 +31,8 @@ struct Rules: Codable {
     var ignorePortCommands: [String]
     var alert: AlertRule
 
-    static let path: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent(AppInfo.appSupportDir + "/rules.json")
-    }()
+    static let path: URL = URL(fileURLWithPath: AppInfo.supportPath)
+        .appendingPathComponent("rules.json")
 
     /// 设置页保存后要在进程内立即可读，所以是 var
     static var shared: Rules = load()

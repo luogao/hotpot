@@ -15,7 +15,7 @@ enum ServiceProbe {
         guard let url = URL(string: "http://\(host):\(port)/") else { return nil }
         var req = URLRequest(url: url)
         req.timeoutInterval = 1.0
-        req.setValue("HotPot", forHTTPHeaderField: "User-Agent")
+        req.setValue(AppInfo.name, forHTTPHeaderField: "User-Agent")
 
         var out: String?
         let sem = DispatchSemaphore(value: 0)

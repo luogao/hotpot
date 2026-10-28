@@ -16,18 +16,42 @@ enum Theme {
     static let border = Color.white.opacity(0.07)
 }
 
-/// 项目名的唯一来源：改名只改 `name`，窗口标题 / 菜单 / 提示 / 版权 / 链接全部跟着变。
+/// 项目名的唯一来源：改名只改这里的 `name` / `slug`，
+/// 窗口标题、菜单、提示、版权、链接、支持目录、bundle id 全部跟着变。
 enum AppInfo {
-    static let name = "HotPot"
+    static let name = "Manatee"
+    /// 用作 repo 名、brew cask 名、支持目录名（小写无空格）
+    static let slug = "manatee"
     static let owner = "luogao"
+    static let homepage = "https://manatee.rungundam.top"
+
+    /// 旧名字。改名前的配置目录会被自动迁移过来，用户无感升级。
+    static let legacyNames = ["HotPot"]
 
     static var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
     }
-    static var repo: URL { URL(string: "https://github.com/\(owner)/\(name.lowercased())")! }
+    static var repo: URL { URL(string: "https://github.com/\(owner)/\(slug)")! }
     static var releases: URL { repo.appendingPathComponent("releases") }
     static var copyright: String { "© 2026 \(name)" }
     static var appSupportDir: String { "Application Support/\(name)" }
+
+    /// 支持目录的完整路径，第一次访问时顺手把旧目录搬过来
+    static var supportPath: String {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let target = base.appendingPathComponent(name)
+        if !FileManager.default.fileExists(atPath: target.path) {
+            for old in legacyNames {
+                let src = base.appendingPathComponent(old)
+                if FileManager.default.fileExists(atPath: src.path) {
+                    try? FileManager.default.moveItem(at: src, to: target)
+                    break
+                }
+            }
+        }
+        try? FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        return target.path
+    }
 }
 
 enum PanelTab { case agents, ports }

@@ -19,4 +19,4 @@ jobs:
       - name: Build (release)
         run: swift build -c release
       - name: E2E self-check
-        run: .build/debug/HotPot --e2e
+        run: .build/debug/Manatee --e2e

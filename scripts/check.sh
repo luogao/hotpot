@@ -10,4 +10,4 @@ echo "== test"
 swift test
 
 echo "== e2e"
-.build/debug/HotPot --e2e
+.build/debug/Manatee --e2e

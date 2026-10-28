@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import SwiftUI
 
-/// `HotPot --e2e`：不需要窗口、不需要辅助功能权限的自检。
+/// `Manatee --e2e`：不需要窗口、不需要辅助功能权限的自检。
 /// 覆盖「启动链路能不能走通、视图能不能建、存储能不能读写」，
 /// 用来兜住 CI 里最容易漏的那类回归（崩在启动、视图空白、SQL 写坏）。
 enum E2E {
@@ -10,7 +10,7 @@ enum E2E {
 
     static func run() -> Int32 {
         failures = 0
-        print("HotPot e2e")
+        print("\(AppInfo.name) e2e")
 
         // 1) 规则表
         let rules = Rules.shared.agents
@@ -25,7 +25,7 @@ enum E2E {
         check("会话聚合", true, "\(sessions.count) 个会话")
 
         // 4) 存储读写
-        let dbPath = NSTemporaryDirectory() + "hotpot-e2e-\(UUID().uuidString).sqlite"
+        let dbPath = NSTemporaryDirectory() + "manatee-e2e-\(UUID().uuidString).sqlite"
         let store = MetricsStore(path: dbPath)
         let now = Int(Date().timeIntervalSince1970)
         store.record(agents: [(id: "e2e", cpuPercent: 100, memMB: 1, procs: 1)],

@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import HotPot
+@testable import Manatee
 
 private func p(_ path: String, args: String = "", pid: pid_t, ppid: pid_t,
                pgid: pid_t? = nil, cpu: Double = 0) -> ProcInfo {

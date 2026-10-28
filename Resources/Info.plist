@@ -5,23 +5,23 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
     <key>CFBundleExecutable</key>
-    <string>HotPot</string>
+    <string>Manatee</string>
     <key>CFBundleIdentifier</key>
-    <string>top.rungundam.hotpot</string>
+    <string>top.rungundam.manatee</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleName</key>
-    <string>HotPot</string>
+    <string>Manatee</string>
     <key>CFBundleDisplayName</key>
-    <string>HotPot</string>
+    <string>Manatee</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.5.1</string>
+    <string>0.6.0</string>
     <key>CFBundleVersion</key>
-    <string>0.5.1</string>
+    <string>0.6.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
@@ -29,6 +29,6 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>MIT License · inspired by WhoIsCooking</string>
+    <string>MIT License · manatee.rungundam.top</string>
 </dict>
 </plist>

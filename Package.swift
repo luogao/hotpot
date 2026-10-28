@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "HotPot",
+    name: "Manatee",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "HotPot",
-            path: "Sources/HotPot",
+            name: "Manatee",
+            path: "Sources/Manatee",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
@@ -15,8 +15,8 @@ let package = Package(
                 .linkedLibrary("sqlite3"),
             ]),
         .testTarget(
-            name: "HotPotTests",
-            dependencies: ["HotPot"]
+            name: "ManateeTests",
+            dependencies: ["Manatee"]
         )
     ]
 )

@@ -304,7 +304,7 @@ struct SettingsView: View {
             Spacer(minLength: 0)
             LinkText(title: "v" + AppInfo.version, url: AppInfo.releases, size: 10)
             Text("·").font(.system(size: 10)).foregroundStyle(Theme.ink2.opacity(0.4))
-            LinkText(title: "github.com/luogao/hotpot", url: AppInfo.repo, size: 10)
+            LinkText(title: "github.com/\(AppInfo.owner)/\(AppInfo.slug)", url: AppInfo.repo, size: 10)
         }
         .padding(.horizontal, 18)
         .frame(height: 34)
@@ -334,7 +334,7 @@ struct SettingsView: View {
             alert.messageText = L10n.t("设置开机自启失败", "Could not change login item")
             alert.informativeText = L10n.t(
                 "把 \(AppInfo.name) 拖进 /Applications 再试。\n\(error.localizedDescription)",
-                "Move HotPot into /Applications and try again.\n\(error.localizedDescription)")
+                "Move \(AppInfo.name) into /Applications and try again.\n\(error.localizedDescription)")
             alert.alertStyle = .warning
             alert.runModal()
         }

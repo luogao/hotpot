@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import HotPot
+@testable import Manatee
 
 /// 测试用的规则表：不复用用户本地的 rules.json，避免测试随配置漂移
 private let testRules: [AgentDef] = [

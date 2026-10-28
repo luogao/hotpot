@@ -14,7 +14,7 @@ struct AgentDef {
     let detect: [String]
 }
 
-/// 规则表来自 `~/Library/Application Support/HotPot/rules.json`，
+/// 规则表来自 `~/Library/Application Support/Manatee/rules.json`，
 /// 文件缺失或解析失败时回退 Rules.default（内置 11 项）。
 enum AgentRegistry {
     static let all: [AgentDef] = Rules.shared.agents

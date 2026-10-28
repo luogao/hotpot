@@ -165,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.messageText = L10n.t("设置开机自启失败", "Could not change login item")
             alert.informativeText = L10n.t(
                 "把 \(AppInfo.name) 拖进 /Applications 再试。\n\(error.localizedDescription)",
-                "Move HotPot into /Applications and try again.\n\(error.localizedDescription)")
+                "Move \(AppInfo.name) into /Applications and try again.\n\(error.localizedDescription)")
             alert.alertStyle = .warning
             alert.runModal()
         }

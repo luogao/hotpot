@@ -119,7 +119,7 @@ enum PortScanner {
     /// readDataToEndOfFile 会一直等管道 EOF，实测卡满 120 秒零输出。
     /// （popen 在 Swift 里被标记 unavailable，只能用 Process。）
     private static func runLsof() -> String? {
-        let path = NSTemporaryDirectory() + "hotpot-lsof-\(getpid()).txt"
+        let path = NSTemporaryDirectory() + "manatee-lsof-\(getpid()).txt"
         FileManager.default.createFile(atPath: path, contents: nil)
         guard let fh = FileHandle(forWritingAtPath: path) else { return nil }
         defer {

@@ -96,7 +96,7 @@ if argv.contains("--seed-metrics") {
                DevService(pid: 90001, port: 5173, command: "node", uptime: 3600, stray: false,
                           cwd: "/Users/gaogao/Documents/Hermes/video-studio-agent/packages/web"),
                DevService(pid: 90002, port: 3000, command: "node", uptime: 7200, stray: true,
-                          cwd: "/Users/gaogao/Documents/Hermes/hotpot-website"),
+                          cwd: "/Users/gaogao/Documents/Hermes/manatee-website"),
            ] : [],
            at: ts, interval: 300)
     }
@@ -122,7 +122,7 @@ if argv.contains("--render") {
         model.devServices = [
             DevService(pid: 90001, port: 3000, command: "node", uptime: 5400, stray: true,
                        bind: "127.0.0.1", argv: "node server.js --port 3000",
-                       cwd: "/Users/gaogao/Documents/Hermes/hotpot-website", parentName: "launchd", parentPid: 1,
+                       cwd: "/Users/gaogao/Documents/Hermes/manatee-website", parentName: "launchd", parentPid: 1,
                        purpose: "Express"),
             DevService(pid: 90002, port: 5173, command: "node", uptime: 2100, stray: true,
                        bind: "::1", argv: "node .../vite/bin/vite.js --port 5173",

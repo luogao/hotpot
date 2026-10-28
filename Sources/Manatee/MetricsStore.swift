@@ -8,7 +8,7 @@ final class MetricsStore {
     static let shared = MetricsStore()
 
     private var db: OpaquePointer?
-    private let queue = DispatchQueue(label: "hotpot.metrics", qos: .utility)
+    private let queue = DispatchQueue(label: "manatee.metrics", qos: .utility)
     private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
     var dbPath: String { path }
@@ -28,10 +28,7 @@ final class MetricsStore {
 
     private static func defaultPath() -> String {
         if let override = ProcessInfo.processInfo.environment["HOTPOT_METRICS_DB"] { return override }
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let dir = base.appendingPathComponent(AppInfo.appSupportDir)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("metrics.sqlite").path
+        return (AppInfo.supportPath as NSString).appendingPathComponent("metrics.sqlite")
     }
 
     // MARK: - 打开 / 建表
